@@ -302,7 +302,7 @@ function generatePhotoUrlsFromDrive() {
 
   const photos = imageFiles.map(function (file, index) {
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    const url = 'https://drive.google.com/uc?export=view&id=' + file.getId();
+    const url = 'https://lh3.googleusercontent.com/d/' + file.getId() + '=w1200';
     return [DESTINATION_ORDER, index + 1, url, file.getName(), ''];
   });
 
