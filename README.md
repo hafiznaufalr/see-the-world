@@ -2,6 +2,8 @@
 
 Hafiz's travel playlist — unlock memories one destination at a time.
 
+**Live site:** [https://hafiznaufalr.github.io/see-the-world/](https://hafiznaufalr.github.io/see-the-world/)
+
 ## Content management
 
 **Content lives in Google Sheets** — edit the sheet, refresh the site. No redeploy for photos or new chapters.
@@ -22,7 +24,7 @@ Open [http://localhost:8080](http://localhost:8080)
 2. Push this project
 3. **Settings → Pages →** branch `main`, folder `/ (root)`
 4. Add your Google Sheet ID to `js/config.js` and push **once**
-5. Live at `https://<username>.github.io/see-the-world/`
+5. Live at [https://hafiznaufalr.github.io/see-the-world/](https://hafiznaufalr.github.io/see-the-world/)
 
 ## Project structure
 
