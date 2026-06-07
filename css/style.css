@@ -60,9 +60,11 @@ body {
 
 .hero-title .icon {
   color: var(--accent-energy);
-  width: 1.35em;
-  height: 1.35em;
+  width: 1.15em;
+  height: 1.15em;
   flex-shrink: 0;
+  align-self: center;
+  transform: translateY(0.06em);
 }
 
 .hero-tagline {

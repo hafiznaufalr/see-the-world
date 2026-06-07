@@ -22,6 +22,11 @@ function icon(name, className) {
 }
 
 function setIcon(el, name) {
+  if (!el) return;
+  if (el.classList.contains('icon')) {
+    el.innerHTML = ICONS[name] || '';
+    return;
+  }
   el.innerHTML = '';
   el.appendChild(icon(name));
 }
