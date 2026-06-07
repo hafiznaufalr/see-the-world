@@ -14,12 +14,18 @@
   --text-muted: #737373;
   --text-dim: #525252;
   --accent: #fafafa;
+  --accent-energy: #a3e635;
+  --accent-energy-dim: rgba(163, 230, 53, 0.15);
   --radius: 8px;
   --transition: 0.2s ease;
 }
 
 html {
   scroll-behavior: smooth;
+}
+
+dialog:not([open]) {
+  display: none !important;
 }
 
 body {
@@ -43,10 +49,20 @@ body {
 }
 
 .hero-title {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
   font-size: clamp(1.75rem, 5vw, 2.25rem);
   font-weight: 600;
   letter-spacing: -0.02em;
   margin-bottom: 0.35rem;
+}
+
+.hero-title .icon {
+  color: var(--accent-energy);
+  width: 1.35em;
+  height: 1.35em;
+  flex-shrink: 0;
 }
 
 .hero-tagline {
@@ -62,11 +78,20 @@ body {
 }
 
 .progress-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   font-size: 0.8rem;
   font-weight: 500;
   color: var(--text-muted);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+.progress-count .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-energy);
 }
 
 .progress-track {
@@ -80,9 +105,10 @@ body {
 .progress-fill {
   height: 100%;
   width: 0%;
-  background: var(--accent);
+  background: linear-gradient(90deg, var(--accent-energy), #d9f99d);
   border-radius: 99px;
   transition: width 0.8s ease;
+  box-shadow: 0 0 12px rgba(163, 230, 53, 0.25);
 }
 
 /* Main */
@@ -93,9 +119,37 @@ body {
 }
 
 .loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-size: 0.85rem;
   color: var(--text-muted);
   margin-bottom: 1rem;
+}
+
+.loading .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--accent-energy);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Icons */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 0;
+}
+
+.icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .error {
@@ -139,6 +193,14 @@ body {
 .card--unlocked:hover {
   background: #1c1c1c;
   border-color: #333;
+}
+
+.card--unlocked {
+  border-left: 2px solid var(--accent-energy);
+}
+
+.card--unlocked .card-index {
+  color: var(--accent-energy);
 }
 
 .card--locked {
@@ -193,6 +255,9 @@ body {
 }
 
 .card-desc {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   font-size: 0.8rem;
   color: var(--text-muted);
   margin-top: 0.15rem;
@@ -201,20 +266,63 @@ body {
   text-overflow: ellipsis;
 }
 
+.card--unlocked .card-desc .icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  color: var(--accent-energy);
+}
+
+.card--locked .card-desc .icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  opacity: 0.5;
+}
+
 .card-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
   flex-shrink: 0;
   font-size: 0.75rem;
   color: var(--text-dim);
 }
 
-.card--unlocked .card-status {
-  color: var(--text-muted);
+.card-status .icon {
+  width: 14px;
+  height: 14px;
 }
 
-.card-lock {
+.card--unlocked .card-status {
+  color: var(--accent-energy);
+}
+
+.card-lock,
+.card-lock-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
-  font-size: 0.85rem;
-  opacity: 0.5;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.card-lock .icon,
+.card-lock-placeholder .icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.45;
+}
+
+.card-lock-placeholder {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  background: var(--border);
 }
 
 /* Footer */
@@ -230,24 +338,42 @@ body {
   color: var(--text-dim);
 }
 
-/* Gallery Modal */
-.gallery-modal {
+/* Modals — center on desktop */
+.gallery-modal,
+.locked-modal {
   border: none;
   padding: 0;
-  max-width: 720px;
-  width: calc(100% - 2rem);
+  margin: 0;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   background: var(--surface);
   border-radius: var(--radius);
   color: var(--text);
   border: 1px solid var(--border);
 }
 
-.gallery-modal::backdrop {
+.gallery-modal {
+  max-width: 720px;
+  width: min(720px, calc(100vw - 2rem));
+  max-height: min(90vh, 900px);
+}
+
+.locked-modal {
+  max-width: 400px;
+  width: min(400px, calc(100vw - 2rem));
+  max-height: min(90vh, 600px);
+  overflow: auto;
+}
+
+.gallery-modal::backdrop,
+.locked-modal::backdrop {
   background: rgba(0, 0, 0, 0.6);
 }
 
 .gallery-modal-inner {
-  max-height: 85vh;
+  max-height: min(90vh, 900px);
   overflow-y: auto;
 }
 
@@ -270,23 +396,46 @@ body {
 }
 
 .gallery-title {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   font-size: 1.15rem;
   font-weight: 600;
+}
+
+.gallery-title-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--accent-energy);
+}
+
+.gallery-close,
+.lightbox-close,
+.lightbox-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .gallery-close {
   background: none;
   border: none;
   color: var(--text-muted);
-  font-size: 1.5rem;
   cursor: pointer;
   line-height: 1;
-  padding: 0.25rem;
-  transition: color var(--transition);
+  padding: 0.35rem;
+  border-radius: 6px;
+  transition: color var(--transition), background var(--transition);
+}
+
+.gallery-close .icon {
+  width: 18px;
+  height: 18px;
 }
 
 .gallery-close:hover {
   color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .gallery-grid {
@@ -325,12 +474,18 @@ body {
 .lightbox {
   border: none;
   padding: 0;
-  max-width: none;
-  width: 100%;
-  height: 100%;
-  max-height: none;
+  margin: 0;
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
   background: rgba(0, 0, 0, 0.95);
   color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .lightbox::backdrop {
@@ -342,8 +497,10 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  max-width: min(1200px, 92vw);
+  max-height: 92vh;
   padding: 3rem 4rem;
+  margin: 0;
 }
 
 .lightbox-img {
@@ -364,18 +521,24 @@ body {
   position: fixed;
   top: 1.25rem;
   right: 1.25rem;
-  background: none;
-  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border);
   color: var(--text);
-  font-size: 1.75rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
   cursor: pointer;
   z-index: 10;
-  opacity: 0.6;
-  transition: opacity var(--transition);
+  transition: background var(--transition);
+}
+
+.lightbox-close .icon {
+  width: 18px;
+  height: 18px;
 }
 
 .lightbox-close:hover {
-  opacity: 1;
+  background: rgba(255, 255, 255, 0.14);
 }
 
 .lightbox-nav {
@@ -394,6 +557,11 @@ body {
   z-index: 10;
 }
 
+.lightbox-nav .icon {
+  width: 18px;
+  height: 18px;
+}
+
 .lightbox-nav:hover {
   background: rgba(255, 255, 255, 0.14);
 }
@@ -406,31 +574,39 @@ body {
   right: 1rem;
 }
 
-/* Locked Modal */
-.locked-modal {
-  border: none;
-  padding: 0;
-  max-width: 400px;
-  width: calc(100% - 2rem);
-  background: var(--surface);
-  border-radius: var(--radius);
-  color: var(--text);
-  border: 1px solid var(--border);
-}
-
-.locked-modal::backdrop {
-  background: rgba(0, 0, 0, 0.6);
-}
-
+/* Locked modal content */
 .locked-modal-inner {
   padding: 2rem 1.5rem;
   text-align: center;
 }
 
 .locked-icon {
-  font-size: 1.5rem;
-  margin-bottom: 0.75rem;
-  opacity: 0.4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 0.75rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+}
+
+.locked-icon .icon {
+  width: 20px;
+  height: 20px;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+.locked-teaser {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--accent-energy);
+  margin-bottom: 1rem;
 }
 
 .locked-chapter {
@@ -445,10 +621,9 @@ body {
   margin-bottom: 0.5rem;
 }
 
-.locked-teaser {
-  font-size: 0.75rem;
-  color: var(--text-dim);
-  margin-bottom: 1rem;
+.locked-teaser .icon {
+  width: 12px;
+  height: 12px;
 }
 
 .locked-hint {

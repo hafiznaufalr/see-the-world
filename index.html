@@ -13,7 +13,7 @@
 <body>
   <header class="hero">
     <div class="hero-inner">
-      <h1 class="hero-title">See The World Playlist</h1>
+      <h1 class="hero-title"><span id="hero-icon" aria-hidden="true"></span>See The World Playlist</h1>
       <p class="hero-tagline">Hafiz's map — 11 stops ahead. Every memory is waiting, and they'll all be unlocked.</p>
 
       <div class="progress-block">
@@ -41,7 +41,7 @@
           <p class="gallery-chapter" id="gallery-chapter"></p>
           <h2 class="gallery-title" id="gallery-title"></h2>
         </div>
-        <button class="gallery-close" id="gallery-close" aria-label="Close gallery">&times;</button>
+        <button class="gallery-close" id="gallery-close" aria-label="Close gallery"></button>
       </header>
       <div class="gallery-grid" id="gallery-grid"></div>
     </div>
@@ -49,19 +49,19 @@
 
   <!-- Lightbox -->
   <dialog class="lightbox" id="lightbox" aria-label="Photo viewer">
-    <button class="lightbox-close" id="lightbox-close" aria-label="Close">&times;</button>
-    <button class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="Previous photo">&#8592;</button>
+    <button class="lightbox-close" id="lightbox-close" aria-label="Close"></button>
+    <button class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="Previous photo"></button>
     <figure class="lightbox-figure">
       <img class="lightbox-img" id="lightbox-img" src="" alt="">
       <figcaption class="lightbox-caption" id="lightbox-caption"></figcaption>
     </figure>
-    <button class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="Next photo">&#8594;</button>
+    <button class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="Next photo"></button>
   </dialog>
 
   <!-- Locked Detail Modal -->
   <dialog class="locked-modal" id="locked-modal" aria-labelledby="locked-title">
     <div class="locked-modal-inner">
-      <div class="locked-icon" aria-hidden="true">🔒</div>
+      <div class="locked-icon" id="locked-icon" aria-hidden="true"></div>
       <p class="locked-chapter" id="locked-chapter"></p>
       <h2 class="locked-title" id="locked-title">Destination Locked</h2>
       <p class="locked-teaser" id="locked-teaser"></p>
@@ -71,6 +71,7 @@
     </div>
   </dialog>
 
+  <script src="js/icons.js"></script>
   <script src="js/config.js"></script>
   <script src="js/data.js"></script>
   <script src="js/sheets.js"></script>

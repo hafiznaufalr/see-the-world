@@ -30,12 +30,47 @@
   let currentGallery = [];
   let lightboxIndex = 0;
 
+  function resolveImageUrl(src, size) {
+    if (!src) return src;
+
+    var driveIdMatch = src.match(/[?&]id=([\w-]+)/) || src.match(/\/d\/([\w-]+)/);
+    if (driveIdMatch && src.indexOf('drive.google.com') !== -1) {
+      return 'https://lh3.googleusercontent.com/d/' + driveIdMatch[1] + '=w' + (size || 1200);
+    }
+
+    return src;
+  }
+
   function fallbackSrc(index) {
     return `https://picsum.photos/seed/singapore-${index + 1}/800/600`;
   }
 
+  function updateProgress() {
+    const unlocked = getUnlockedCount();
+    const total = destinations.length;
+
+    progressCount.innerHTML = '';
+    progressCount.appendChild(icon('compass'));
+    const countText = document.createElement('span');
+    countText.textContent = `${unlocked} / ${total}`;
+    progressCount.appendChild(countText);
+
+    progressFill.style.width = `${total ? (unlocked / total) * 100 : 0}%`;
+    progressBar.setAttribute('aria-valuemax', total);
+    progressBar.setAttribute('aria-valuenow', unlocked);
+  }
+
   function setLoading(isLoading) {
-    if (loadingEl) loadingEl.hidden = !isLoading;
+    if (loadingEl) {
+      if (isLoading) {
+        loadingEl.innerHTML = '';
+        loadingEl.appendChild(icon('loader'));
+        loadingEl.appendChild(document.createTextNode('Loading playlist…'));
+        loadingEl.hidden = false;
+      } else {
+        loadingEl.hidden = true;
+      }
+    }
     if (isLoading && grid) grid.innerHTML = '';
   }
 
@@ -49,21 +84,33 @@
     return destinations.filter((d) => d.status === 'unlocked').length;
   }
 
-  function updateProgress() {
-    const unlocked = getUnlockedCount();
-    const total = destinations.length;
-    progressCount.textContent = `${unlocked} / ${total}`;
-    progressFill.style.width = `${total ? (unlocked / total) * 100 : 0}%`;
-    progressBar.setAttribute('aria-valuemax', total);
-    progressBar.setAttribute('aria-valuenow', unlocked);
+  function initStaticIcons() {
+    setIcon(document.getElementById('hero-icon'), 'globe');
+    setIcon(galleryClose, 'x');
+    setIcon(lightboxClose, 'x');
+    setIcon(lightboxPrev, 'chevronLeft');
+    setIcon(lightboxNext, 'chevronRight');
+    setIcon(document.getElementById('locked-icon'), 'lock');
   }
 
-  function createImageWithFallback(src, alt, fallbackIndex) {
+  function createImageWithFallback(src, alt, fallbackIndex, size) {
     const img = document.createElement('img');
-    img.src = src;
+    img.src = resolveImageUrl(src, size);
     img.alt = alt;
     img.loading = 'lazy';
+    img.referrerPolicy = 'no-referrer';
     img.addEventListener('error', () => {
+      if (img.dataset.retried) {
+        img.src = fallbackSrc(fallbackIndex);
+        return;
+      }
+      img.dataset.retried = '1';
+      // Retry with Drive thumbnail endpoint
+      const driveIdMatch = src.match(/[?&]id=([\w-]+)/) || src.match(/\/d\/([\w-]+)/);
+      if (driveIdMatch) {
+        img.src = 'https://drive.google.com/thumbnail?id=' + driveIdMatch[1] + '&sz=w1000';
+        return;
+      }
       img.src = fallbackSrc(fallbackIndex);
     });
     return img;
@@ -87,8 +134,13 @@
       if (isUnlocked && dest.gallery && dest.gallery.length > 0) {
         const thumb = document.createElement('div');
         thumb.className = 'card-thumb';
-        thumb.appendChild(createImageWithFallback(dest.gallery[0].src, dest.gallery[0].alt, 0));
+        thumb.appendChild(createImageWithFallback(dest.gallery[0].src, dest.gallery[0].alt, 0, 200));
         card.appendChild(thumb);
+      } else if (!isUnlocked) {
+        const placeholder = document.createElement('span');
+        placeholder.className = 'card-lock-placeholder';
+        placeholder.appendChild(icon('map'));
+        card.appendChild(placeholder);
       }
 
       const body = document.createElement('div');
@@ -102,7 +154,13 @@
       const desc = document.createElement('p');
       desc.className = 'card-desc';
       const photoCount = dest.gallery ? dest.gallery.length : 0;
-      desc.textContent = isUnlocked ? `${photoCount} photos` : dest.teaser;
+      if (isUnlocked) {
+        desc.appendChild(icon('images'));
+        desc.appendChild(document.createTextNode(`${photoCount} photos`));
+      } else {
+        desc.appendChild(icon('pin'));
+        desc.appendChild(document.createTextNode(dest.teaser));
+      }
       body.appendChild(desc);
 
       card.appendChild(body);
@@ -110,13 +168,13 @@
       if (isUnlocked) {
         const status = document.createElement('span');
         status.className = 'card-status';
-        status.textContent = 'View';
+        status.appendChild(document.createTextNode('View'));
+        status.appendChild(icon('chevronRight'));
         card.appendChild(status);
       } else {
         const lock = document.createElement('span');
         lock.className = 'card-lock';
-        lock.textContent = '🔒';
-        lock.setAttribute('aria-hidden', 'true');
+        lock.appendChild(icon('lock'));
         card.appendChild(lock);
       }
 
@@ -131,7 +189,9 @@
 
   function openGallery(dest) {
     galleryChapter.textContent = dest.title;
-    galleryTitle.textContent = dest.subtitle;
+    galleryTitle.innerHTML = '';
+    galleryTitle.appendChild(icon('unlock', 'gallery-title-icon'));
+    galleryTitle.appendChild(document.createTextNode(dest.subtitle));
     galleryGrid.innerHTML = '';
     currentGallery = dest.gallery || [];
 
@@ -141,7 +201,7 @@
       item.type = 'button';
       item.setAttribute('aria-label', photo.caption || photo.alt);
 
-      const img = createImageWithFallback(photo.src, photo.alt, i);
+      const img = createImageWithFallback(photo.src, photo.alt, i, 600);
       item.appendChild(img);
 
       if (photo.caption) {
@@ -161,11 +221,22 @@
   function openLightbox(index) {
     lightboxIndex = index;
     const photo = currentGallery[index];
-    lightboxImg.src = photo.src;
+    lightboxImg.src = resolveImageUrl(photo.src, 1600);
     lightboxImg.alt = photo.alt;
     lightboxCaption.textContent = photo.caption || photo.alt;
+    lightboxImg.referrerPolicy = 'no-referrer';
 
     lightboxImg.onerror = () => {
+      if (lightboxImg.dataset.retried) {
+        lightboxImg.src = fallbackSrc(index);
+        return;
+      }
+      lightboxImg.dataset.retried = '1';
+      const driveIdMatch = photo.src.match(/[?&]id=([\w-]+)/) || photo.src.match(/\/d\/([\w-]+)/);
+      if (driveIdMatch) {
+        lightboxImg.src = 'https://drive.google.com/thumbnail?id=' + driveIdMatch[1] + '&sz=w1600';
+        return;
+      }
       lightboxImg.src = fallbackSrc(index);
     };
 
@@ -180,7 +251,9 @@
   function openLocked(dest) {
     lockedChapter.textContent = dest.title;
     lockedTitle.textContent = 'Destination Locked';
-    lockedTeaser.textContent = dest.teaser;
+    lockedTeaser.innerHTML = '';
+    lockedTeaser.appendChild(icon('spark'));
+    lockedTeaser.appendChild(document.createTextNode(dest.teaser));
     lockedHint.textContent = dest.hint;
     lockedModal.showModal();
   }
@@ -210,6 +283,7 @@
   });
 
   async function init() {
+    initStaticIcons();
     setLoading(true);
 
     try {
