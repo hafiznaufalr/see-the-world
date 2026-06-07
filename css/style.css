@@ -51,20 +51,24 @@ body {
 .hero-title {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
+  gap: 0.65rem;
   font-size: clamp(1.75rem, 5vw, 2.25rem);
   font-weight: 600;
   letter-spacing: -0.02em;
+  line-height: 1.15;
   margin-bottom: 0.35rem;
 }
 
 .hero-title .icon {
   color: var(--accent-energy);
-  width: 1.15em;
-  height: 1.15em;
+  width: 1.28em;
+  height: 1.28em;
   flex-shrink: 0;
-  align-self: center;
-  transform: translateY(0.06em);
+}
+
+.hero-title-text {
+  display: block;
+  line-height: 1.15;
 }
 
 .hero-tagline {
