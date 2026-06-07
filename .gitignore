@@ -1,0 +1,19 @@
+# OS / editor
+.DS_Store
+*.swp
+*~
+.idea/
+.vscode/
+
+# Secrets — never commit these
+.env
+.env.*
+*.pem
+*.key
+credentials.json
+
+# Local-only config (optional — see note in README)
+# js/config.js
+
+# Placeholder photos — real photos live on Google Drive / your Sheet
+images/

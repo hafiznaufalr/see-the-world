@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Hafiz's See The World Playlist — memories unlocked one destination at a time.">
+  <title>See The World Playlist</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-inner">
+      <h1 class="hero-title">See The World Playlist</h1>
+      <p class="hero-tagline">Hafiz's map — 11 stops ahead. Every memory is waiting, and they'll all be unlocked.</p>
+
+      <div class="progress-block">
+        <span class="progress-count" id="progress-count">0 / 11</span>
+        <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="11" aria-valuenow="0" id="progress-bar">
+          <div class="progress-fill" id="progress-fill"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <p class="loading" id="loading">Loading playlist…</p>
+    <p class="error" id="error" hidden></p>
+    <section class="playlist" aria-label="Destination playlist">
+      <div class="playlist-grid" id="playlist-grid"></div>
+    </section>
+  </main>
+
+  <!-- Gallery Modal -->
+  <dialog class="gallery-modal" id="gallery-modal" aria-labelledby="gallery-title">
+    <div class="gallery-modal-inner">
+      <header class="gallery-header">
+        <div class="gallery-header-text">
+          <p class="gallery-chapter" id="gallery-chapter"></p>
+          <h2 class="gallery-title" id="gallery-title"></h2>
+        </div>
+        <button class="gallery-close" id="gallery-close" aria-label="Close gallery">&times;</button>
+      </header>
+      <div class="gallery-grid" id="gallery-grid"></div>
+    </div>
+  </dialog>
+
+  <!-- Lightbox -->
+  <dialog class="lightbox" id="lightbox" aria-label="Photo viewer">
+    <button class="lightbox-close" id="lightbox-close" aria-label="Close">&times;</button>
+    <button class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="Previous photo">&#8592;</button>
+    <figure class="lightbox-figure">
+      <img class="lightbox-img" id="lightbox-img" src="" alt="">
+      <figcaption class="lightbox-caption" id="lightbox-caption"></figcaption>
+    </figure>
+    <button class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="Next photo">&#8594;</button>
+  </dialog>
+
+  <!-- Locked Detail Modal -->
+  <dialog class="locked-modal" id="locked-modal" aria-labelledby="locked-title">
+    <div class="locked-modal-inner">
+      <div class="locked-icon" aria-hidden="true">🔒</div>
+      <p class="locked-chapter" id="locked-chapter"></p>
+      <h2 class="locked-title" id="locked-title">Destination Locked</h2>
+      <p class="locked-teaser" id="locked-teaser"></p>
+      <p class="locked-hint" id="locked-hint"></p>
+      <p class="locked-footer">Complete the previous chapter to reveal this memory.</p>
+      <button class="locked-close" id="locked-close">Understood</button>
+    </div>
+  </dialog>
+
+  <script src="js/config.js"></script>
+  <script src="js/data.js"></script>
+  <script src="js/sheets.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
