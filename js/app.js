@@ -29,6 +29,7 @@
   let currentGallery = [];
   let lightboxIndex = 0;
   let unlockSequenceRunning = false;
+  let nodePathLengths = [];
 
   const UNLOCK_INITIAL_DELAY_MS = 450;
   const UNLOCK_STAGGER_MS = 550;
@@ -105,110 +106,147 @@
     return img;
   }
 
-  function createLockedCard(dest, index) {
-    const card = document.createElement('button');
-    card.className = 'card card--locked';
-    card.type = 'button';
-    card.dataset.destIndex = String(index);
-    card.setAttribute('aria-label', `Locked destination ${dest.title}`);
+  function createMapSvg() {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'world-map__svg');
+    svg.setAttribute('viewBox', '0 0 100 100');
+    svg.setAttribute('preserveAspectRatio', 'none');
+    svg.setAttribute('aria-hidden', 'true');
 
-    const idx = document.createElement('span');
-    idx.className = 'card-index';
-    idx.textContent = String(index + 1).padStart(2, '0');
-    card.appendChild(idx);
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const glow = document.createElementNS('http://www.w3.org/2000/svg', 'filter');
+    glow.setAttribute('id', 'path-glow');
+    glow.innerHTML =
+      '<feGaussianBlur stdDeviation="0.6" result="blur"/>' +
+      '<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>';
+    defs.appendChild(glow);
+    svg.appendChild(defs);
 
-    const placeholder = document.createElement('span');
-    placeholder.className = 'card-lock-placeholder';
-    placeholder.appendChild(icon('map'));
-    card.appendChild(placeholder);
+    const track = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    track.setAttribute('class', 'world-map__path world-map__path--track');
+    track.setAttribute('d', MAP_PATH_D);
+    svg.appendChild(track);
 
-    const body = document.createElement('div');
-    body.className = 'card-body';
+    const lit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    lit.setAttribute('class', 'world-map__path world-map__path--lit');
+    lit.setAttribute('d', MAP_PATH_D);
+    lit.setAttribute('id', 'map-path-lit');
+    lit.setAttribute('filter', 'url(#path-glow)');
+    svg.appendChild(lit);
 
-    const subtitle = document.createElement('h3');
-    subtitle.className = 'card-subtitle';
-    subtitle.textContent = '???';
-    body.appendChild(subtitle);
-
-    const desc = document.createElement('p');
-    desc.className = 'card-desc';
-    desc.appendChild(icon('pin'));
-    desc.appendChild(document.createTextNode(dest.teaser));
-    body.appendChild(desc);
-
-    card.appendChild(body);
-
-    const lock = document.createElement('span');
-    lock.className = 'card-lock';
-    lock.appendChild(icon('lock'));
-    card.appendChild(lock);
-
-    card.addEventListener('click', () => {
-      if (unlockSequenceRunning) return;
-      if (card.classList.contains('card--unlocked')) openGallery(dest);
-      else openLocked(dest);
-    });
-
-    return card;
+    return svg;
   }
 
-  function applyUnlockedPresentation(card, dest, index, animate) {
-    card.classList.remove('card--locked');
-    card.classList.add('card--unlocked');
-    if (animate) card.classList.add('card--unlocking');
-    card.setAttribute('aria-label', `Open ${dest.subtitle} gallery`);
+  function updateMapPath(unlockedNodeIndex, animate) {
+    const litPath = document.getElementById('map-path-lit');
+    if (!litPath || !nodePathLengths.length) return;
 
-    const placeholder = card.querySelector('.card-lock-placeholder');
-    if (placeholder && dest.gallery && dest.gallery.length > 0) {
-      const thumb = document.createElement('div');
-      thumb.className = 'card-thumb';
-      if (animate) thumb.classList.add('card-thumb--reveal');
-      thumb.appendChild(createImageWithFallback(dest.gallery[0].src, dest.gallery[0].alt, 0, 200));
-      placeholder.replaceWith(thumb);
-    } else if (placeholder) {
-      placeholder.remove();
-    }
+    const total = litPath.getTotalLength();
+    const visible =
+      unlockedNodeIndex >= 0 && unlockedNodeIndex < nodePathLengths.length
+        ? nodePathLengths[unlockedNodeIndex]
+        : 0;
 
-    const subtitle = card.querySelector('.card-subtitle');
-    if (subtitle) subtitle.textContent = dest.subtitle;
+    litPath.style.strokeDasharray = `${total}`;
+    litPath.style.transition = animate ? 'stroke-dashoffset 0.65s cubic-bezier(0.22, 1, 0.36, 1)' : 'none';
+    litPath.style.strokeDashoffset = `${Math.max(total - visible, 0)}`;
+  }
 
-    const desc = card.querySelector('.card-desc');
-    if (desc) {
-      desc.innerHTML = '';
-      desc.appendChild(icon('images'));
-      const photoCount = dest.gallery ? dest.gallery.length : 0;
-      desc.appendChild(document.createTextNode(`${photoCount} photos`));
-    }
+  function cacheNodePathLengths() {
+    const litPath = document.getElementById('map-path-lit');
+    if (!litPath) return;
+    nodePathLengths = measureAllNodePathLengths(litPath);
+  }
 
-    const lock = card.querySelector('.card-lock');
-    if (lock) {
-      const status = document.createElement('span');
-      status.className = 'card-status';
-      status.appendChild(document.createTextNode('View'));
-      status.appendChild(icon('chevronRight'));
+  function bindNodeClick(node, dest) {
+    node.addEventListener('click', () => {
+      if (unlockSequenceRunning) return;
+      if (node.classList.contains('map-node--unlocked')) openGallery(dest);
+      else openLocked(dest);
+    });
+  }
 
-      if (animate) {
-        status.classList.add('card-status--reveal');
-        lock.classList.add('card-lock--exit');
-        lock.addEventListener(
-          'animationend',
-          () => {
-            lock.replaceWith(status);
-          },
-          { once: true }
-        );
+  function createLockedMapNode(dest, index) {
+    const pos = MAP_NODE_POSITIONS[index] || MAP_NODE_POSITIONS[MAP_NODE_POSITIONS.length - 1];
+    const node = document.createElement('button');
+    node.className = 'map-node map-node--locked';
+    node.type = 'button';
+    node.dataset.destIndex = String(index);
+    node.style.left = `${pos.x}%`;
+    node.style.top = `${pos.y}%`;
+    node.style.zIndex = String(20 + index);
+    if (pos.x < 50) node.classList.add('map-node--left');
+    else node.classList.add('map-node--right');
+    node.setAttribute('aria-label', `Locked destination ${dest.title}`);
+
+    const ring = document.createElement('span');
+    ring.className = 'map-node__ring';
+
+    const inner = document.createElement('span');
+    inner.className = 'map-node__inner map-node__inner--locked';
+    inner.appendChild(icon('lock'));
+    ring.appendChild(inner);
+    node.appendChild(ring);
+
+    const label = document.createElement('span');
+    label.className = 'map-node__label';
+
+    const badge = document.createElement('span');
+    badge.className = 'map-node__badge';
+    badge.textContent = String(index + 1).padStart(2, '0');
+    label.appendChild(badge);
+
+    const name = document.createElement('span');
+    name.className = 'map-node__name';
+    name.textContent = '???';
+    label.appendChild(name);
+
+    const teaser = document.createElement('span');
+    teaser.className = 'map-node__teaser';
+    teaser.textContent = dest.teaser || 'Sealed';
+    label.appendChild(teaser);
+
+    node.appendChild(label);
+
+    bindNodeClick(node, dest);
+    return node;
+  }
+
+  function applyUnlockedPresentation(node, dest, index, animate) {
+    node.classList.remove('map-node--locked');
+    node.classList.add('map-node--unlocked');
+    if (animate) node.classList.add('map-node--unlocking');
+    node.setAttribute('aria-label', `Open ${dest.subtitle} gallery`);
+
+    const inner = node.querySelector('.map-node__inner');
+    if (inner) {
+      inner.classList.remove('map-node__inner--locked');
+      inner.innerHTML = '';
+      if (dest.gallery && dest.gallery.length > 0) {
+        inner.appendChild(createImageWithFallback(dest.gallery[0].src, dest.gallery[0].alt, index, 200));
       } else {
-        lock.replaceWith(status);
+        inner.appendChild(icon('map'));
       }
     }
 
-    if (animate) {
-      if (window.unlockEffects) window.unlockEffects.celebrate(card);
+    const name = node.querySelector('.map-node__name');
+    if (name) name.textContent = dest.subtitle;
 
-      card.addEventListener(
+    const teaser = node.querySelector('.map-node__teaser');
+    if (teaser) {
+      const photoCount = dest.gallery ? dest.gallery.length : 0;
+      teaser.textContent = `${photoCount} photos`;
+    }
+
+    updateMapPath(index, animate);
+
+    if (animate) {
+      if (window.unlockEffects) window.unlockEffects.celebrate(node);
+
+      node.addEventListener(
         'animationend',
         () => {
-          card.classList.remove('card--unlocking');
+          node.classList.remove('map-node--unlocking');
         },
         { once: true }
       );
@@ -220,6 +258,8 @@
       .map((dest, index) => (dest.status === 'unlocked' ? index : -1))
       .filter((index) => index !== -1);
 
+    updateMapPath(-1, false);
+
     if (!unlockedIndices.length) {
       updateProgress();
       return;
@@ -229,31 +269,32 @@
 
     if (prefersReducedMotion) {
       unlockedIndices.forEach((index) => {
-        const card = grid.querySelector(`[data-dest-index="${index}"]`);
-        if (card) applyUnlockedPresentation(card, destinations[index], index, false);
+        const node = grid.querySelector(`[data-dest-index="${index}"]`);
+        if (node) applyUnlockedPresentation(node, destinations[index], index, false);
       });
+      updateMapPath(unlockedIndices[unlockedIndices.length - 1], false);
       updateProgress();
       return;
     }
 
     unlockSequenceRunning = true;
-    grid.classList.add('playlist-grid--sequencing');
+    grid.classList.add('world-map--sequencing');
     updateProgress(0);
 
     unlockedIndices.forEach((destIndex, sequenceIndex) => {
       const delay = UNLOCK_INITIAL_DELAY_MS + sequenceIndex * UNLOCK_STAGGER_MS;
 
       setTimeout(() => {
-        const card = grid.querySelector(`[data-dest-index="${destIndex}"]`);
-        if (!card) return;
+        const node = grid.querySelector(`[data-dest-index="${destIndex}"]`);
+        if (!node) return;
 
-        applyUnlockedPresentation(card, destinations[destIndex], destIndex, true);
+        applyUnlockedPresentation(node, destinations[destIndex], destIndex, true);
         updateProgress(sequenceIndex + 1);
 
         if (sequenceIndex === unlockedIndices.length - 1) {
           setTimeout(() => {
             unlockSequenceRunning = false;
-            grid.classList.remove('playlist-grid--sequencing');
+            grid.classList.remove('world-map--sequencing');
           }, 650);
         }
       }, delay);
@@ -262,12 +303,20 @@
 
   function renderCards() {
     grid.innerHTML = '';
-    grid.classList.remove('playlist-grid--sequencing');
+    grid.className = 'world-map';
+    grid.classList.remove('world-map--sequencing');
+
+    grid.appendChild(createMapSvg());
+
+    const nodesLayer = document.createElement('div');
+    nodesLayer.className = 'world-map__nodes';
 
     destinations.forEach((dest, index) => {
-      grid.appendChild(createLockedCard(dest, index));
+      nodesLayer.appendChild(createLockedMapNode(dest, index));
     });
 
+    grid.appendChild(nodesLayer);
+    cacheNodePathLengths();
     runUnlockSequence();
   }
 

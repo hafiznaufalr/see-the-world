@@ -39,7 +39,7 @@ body {
 
 /* Hero */
 .hero {
-  padding: 3.5rem 1.5rem 2rem;
+  padding: 3.5rem 1.5rem 2.5rem;
   border-bottom: 1px solid var(--border);
 }
 
@@ -121,7 +121,7 @@ body {
 .main {
   max-width: 720px;
   margin: 0 auto;
-  padding: 1.5rem 1.5rem 4rem;
+  padding: 2rem 1.5rem 4.5rem;
 }
 
 /* Icons */
@@ -155,6 +155,311 @@ body {
   border: 1px solid rgba(248, 113, 113, 0.3);
   border-radius: var(--radius);
   background: rgba(248, 113, 113, 0.08);
+}
+
+/* World map — game level select */
+.world-map {
+  position: relative;
+  min-height: 940px;
+  padding: 1.35rem 1.25rem 2.75rem;
+  border-radius: calc(var(--radius) + 4px);
+  background:
+    radial-gradient(circle at 20% 15%, rgba(163, 230, 53, 0.04), transparent 35%),
+    radial-gradient(circle at 80% 45%, rgba(163, 230, 53, 0.03), transparent 30%),
+    linear-gradient(180deg, #121212 0%, #0f0f0f 55%, #101010 100%);
+  border: 1px solid var(--border);
+  overflow: visible;
+}
+
+.world-map::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: linear-gradient(180deg, black, transparent 95%);
+  pointer-events: none;
+}
+
+.world-map__svg {
+  position: absolute;
+  inset: 4% 10% 7%;
+  width: calc(100% - 20%);
+  height: calc(100% - 11%);
+  pointer-events: none;
+}
+
+.world-map__path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.world-map__path--track {
+  stroke: #1f1f1f;
+  stroke-width: 1.2;
+}
+
+.world-map__path--lit {
+  stroke: var(--accent-energy);
+  stroke-width: 1.4;
+  opacity: 0.85;
+  stroke-dashoffset: 9999;
+}
+
+.world-map__nodes {
+  position: relative;
+  z-index: 1;
+  min-height: 940px;
+}
+
+.world-map--sequencing .map-node--locked {
+  pointer-events: none;
+}
+
+.map-node {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  width: 108px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-family: inherit;
+  color: inherit;
+}
+
+.map-node:focus-visible {
+  outline: 2px solid var(--accent-energy);
+  outline-offset: 4px;
+  border-radius: 999px;
+}
+
+.map-node__ring {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  padding: 3px;
+  background: #1a1a1a;
+  border: 2px solid #2a2a2a;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: border-color 0.35s ease, box-shadow 0.35s ease, background 0.35s ease, transform 0.2s ease;
+}
+
+.map-node__label {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  width: 100%;
+  padding: 0 0.15rem;
+}
+
+.map-node__badge,
+.map-node__name,
+.map-node__teaser {
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.85),
+    0 0 10px rgba(15, 15, 15, 0.65);
+}
+
+.map-node--left {
+  align-items: flex-start;
+}
+
+.map-node--left .map-node__label {
+  align-items: flex-start;
+  text-align: left;
+  padding-left: 0.35rem;
+  padding-right: 0.75rem;
+}
+
+.map-node--right {
+  align-items: flex-end;
+}
+
+.map-node--right .map-node__label {
+  align-items: flex-end;
+  text-align: right;
+  padding-right: 0.35rem;
+  padding-left: 0.75rem;
+}
+
+.map-node__inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #141414;
+}
+
+.map-node__inner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.map-node__inner--locked .icon {
+  width: 18px;
+  height: 18px;
+  color: #525252;
+}
+
+.map-node__badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.map-node__name {
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.25;
+  max-width: 104px;
+  color: var(--text-muted);
+  word-break: break-word;
+}
+
+.map-node__teaser {
+  font-size: 0.62rem;
+  line-height: 1.3;
+  max-width: 104px;
+  color: var(--text-dim);
+  word-break: break-word;
+}
+
+.map-node--locked .map-node__ring {
+  background: #141414;
+  border-color: #262626;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.45);
+}
+
+.map-node--locked .map-node__inner {
+  background: #101010;
+}
+
+.map-node--locked .map-node__name,
+.map-node--locked .map-node__teaser {
+  opacity: 0.65;
+}
+
+.map-node--locked:hover .map-node__ring {
+  border-color: #333;
+}
+
+.map-node--unlocked .map-node__ring {
+  background: linear-gradient(145deg, rgba(163, 230, 53, 0.35), rgba(163, 230, 53, 0.08));
+  border-color: var(--accent-energy);
+  box-shadow: 0 0 20px rgba(163, 230, 53, 0.18);
+}
+
+.map-node--unlocked .map-node__badge {
+  color: var(--accent-energy);
+}
+
+.map-node--unlocked .map-node__name {
+  color: var(--text);
+}
+
+.map-node--unlocked .map-node__teaser {
+  color: var(--accent-energy);
+  opacity: 0.85;
+}
+
+.map-node--unlocked:hover .map-node__ring {
+  box-shadow: 0 0 28px rgba(163, 230, 53, 0.28);
+  transform: scale(1.04);
+}
+
+.map-node--unlocking {
+  animation: mapNodeUnlock 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.map-node--unlocking .map-node__ring {
+  animation: mapRingPulse 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.map-node--unlocking .map-node__inner--locked .icon {
+  animation: lockPopOut 0.35s ease forwards;
+}
+
+@keyframes mapNodeUnlock {
+  0% { transform: translate(-50%, -50%) scale(0.92); }
+  45% { transform: translate(-50%, -50%) scale(1.08); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes mapRingPulse {
+  0% {
+    box-shadow: 0 0 0 rgba(163, 230, 53, 0);
+    border-color: #262626;
+  }
+  50% {
+    box-shadow: 0 0 32px rgba(163, 230, 53, 0.35);
+    border-color: #d9f99d;
+  }
+  100% {
+    box-shadow: 0 0 20px rgba(163, 230, 53, 0.18);
+    border-color: var(--accent-energy);
+  }
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding: 1.75rem 1.25rem 4rem;
+  }
+
+  .world-map {
+    padding: 1.15rem 0.85rem 2.5rem;
+  }
+
+  .world-map,
+  .world-map__nodes {
+    min-height: 820px;
+  }
+
+  .map-node {
+    width: 96px;
+  }
+
+  .map-node__ring {
+    width: 54px;
+    height: 54px;
+  }
+
+  .map-node__name,
+  .map-node__teaser {
+    max-width: 92px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-node--unlocking,
+  .map-node--unlocking .map-node__ring {
+    animation: none;
+  }
+
+  .world-map__path--lit {
+    transition: none !important;
+  }
 }
 
 .playlist-grid {
