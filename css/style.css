@@ -124,26 +124,6 @@ body {
   padding: 1.5rem 1.5rem 4rem;
 }
 
-.loading {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin-bottom: 1rem;
-}
-
-.loading .icon {
-  width: 16px;
-  height: 16px;
-  color: var(--accent-energy);
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
 /* Icons */
 .icon {
   display: inline-flex;
@@ -156,6 +136,15 @@ body {
 .icon svg {
   width: 100%;
   height: 100%;
+}
+
+#confetti-canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
 }
 
 .error {
@@ -329,6 +318,99 @@ body {
   height: 48px;
   border-radius: 6px;
   background: var(--border);
+}
+
+.playlist-grid--sequencing .card--locked {
+  pointer-events: none;
+}
+
+.card--unlocking {
+  animation: cardUnlockReveal 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  border-left: 2px solid transparent;
+}
+
+.card--unlocking .card-index {
+  animation: cardIndexGlow 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.card--unlocking .card-lock,
+.card-lock--exit {
+  animation: lockPopOut 0.35s ease forwards;
+}
+
+.card-thumb--reveal {
+  animation: thumbReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.12s both;
+}
+
+.card-status--reveal {
+  animation: statusReveal 0.4s ease 0.2s both;
+}
+
+@keyframes cardUnlockReveal {
+  0% {
+    opacity: 0.55;
+    border-left-color: transparent;
+    background: var(--surface);
+  }
+  45% {
+    opacity: 1;
+    border-left-color: rgba(163, 230, 53, 0.85);
+    box-shadow: 0 0 0 1px rgba(163, 230, 53, 0.18), 0 0 28px rgba(163, 230, 53, 0.1);
+  }
+  100% {
+    opacity: 1;
+    border-left-color: var(--accent-energy);
+    box-shadow: none;
+  }
+}
+
+@keyframes cardIndexGlow {
+  0% { color: var(--text-dim); }
+  100% { color: var(--accent-energy); }
+}
+
+@keyframes lockPopOut {
+  0% {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+}
+
+@keyframes thumbReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.82);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes statusReveal {
+  0% {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card--unlocking,
+  .card--unlocking .card-index,
+  .card--unlocking .card-lock,
+  .card-lock--exit,
+  .card-thumb--reveal,
+  .card-status--reveal {
+    animation: none;
+  }
 }
 
 /* Footer */

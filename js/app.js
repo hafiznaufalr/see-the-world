@@ -1,6 +1,5 @@
 (function () {
   const grid = document.getElementById('playlist-grid');
-  const loadingEl = document.getElementById('loading');
   const errorEl = document.getElementById('error');
   const progressCount = document.getElementById('progress-count');
   const progressFill = document.getElementById('progress-fill');
@@ -29,6 +28,10 @@
   let destinations = [];
   let currentGallery = [];
   let lightboxIndex = 0;
+  let unlockSequenceRunning = false;
+
+  const UNLOCK_INITIAL_DELAY_MS = 450;
+  const UNLOCK_STAGGER_MS = 550;
 
   function resolveImageUrl(src, size) {
     if (!src) return src;
@@ -45,8 +48,8 @@
     return `https://picsum.photos/seed/singapore-${index + 1}/800/600`;
   }
 
-  function updateProgress() {
-    const unlocked = getUnlockedCount();
+  function updateProgress(overrideCount) {
+    const unlocked = overrideCount !== undefined ? overrideCount : getUnlockedCount();
     const total = destinations.length;
 
     progressCount.innerHTML = '';
@@ -58,20 +61,6 @@
     progressFill.style.width = `${total ? (unlocked / total) * 100 : 0}%`;
     progressBar.setAttribute('aria-valuemax', total);
     progressBar.setAttribute('aria-valuenow', unlocked);
-  }
-
-  function setLoading(isLoading) {
-    if (loadingEl) {
-      if (isLoading) {
-        loadingEl.innerHTML = '';
-        loadingEl.appendChild(icon('loader'));
-        loadingEl.appendChild(document.createTextNode('Loading playlist…'));
-        loadingEl.hidden = false;
-      } else {
-        loadingEl.hidden = true;
-      }
-    }
-    if (isLoading && grid) grid.innerHTML = '';
   }
 
   function showError(message) {
@@ -116,75 +105,170 @@
     return img;
   }
 
+  function createLockedCard(dest, index) {
+    const card = document.createElement('button');
+    card.className = 'card card--locked';
+    card.type = 'button';
+    card.dataset.destIndex = String(index);
+    card.setAttribute('aria-label', `Locked destination ${dest.title}`);
+
+    const idx = document.createElement('span');
+    idx.className = 'card-index';
+    idx.textContent = String(index + 1).padStart(2, '0');
+    card.appendChild(idx);
+
+    const placeholder = document.createElement('span');
+    placeholder.className = 'card-lock-placeholder';
+    placeholder.appendChild(icon('map'));
+    card.appendChild(placeholder);
+
+    const body = document.createElement('div');
+    body.className = 'card-body';
+
+    const subtitle = document.createElement('h3');
+    subtitle.className = 'card-subtitle';
+    subtitle.textContent = '???';
+    body.appendChild(subtitle);
+
+    const desc = document.createElement('p');
+    desc.className = 'card-desc';
+    desc.appendChild(icon('pin'));
+    desc.appendChild(document.createTextNode(dest.teaser));
+    body.appendChild(desc);
+
+    card.appendChild(body);
+
+    const lock = document.createElement('span');
+    lock.className = 'card-lock';
+    lock.appendChild(icon('lock'));
+    card.appendChild(lock);
+
+    card.addEventListener('click', () => {
+      if (unlockSequenceRunning) return;
+      if (card.classList.contains('card--unlocked')) openGallery(dest);
+      else openLocked(dest);
+    });
+
+    return card;
+  }
+
+  function applyUnlockedPresentation(card, dest, index, animate) {
+    card.classList.remove('card--locked');
+    card.classList.add('card--unlocked');
+    if (animate) card.classList.add('card--unlocking');
+    card.setAttribute('aria-label', `Open ${dest.subtitle} gallery`);
+
+    const placeholder = card.querySelector('.card-lock-placeholder');
+    if (placeholder && dest.gallery && dest.gallery.length > 0) {
+      const thumb = document.createElement('div');
+      thumb.className = 'card-thumb';
+      if (animate) thumb.classList.add('card-thumb--reveal');
+      thumb.appendChild(createImageWithFallback(dest.gallery[0].src, dest.gallery[0].alt, 0, 200));
+      placeholder.replaceWith(thumb);
+    } else if (placeholder) {
+      placeholder.remove();
+    }
+
+    const subtitle = card.querySelector('.card-subtitle');
+    if (subtitle) subtitle.textContent = dest.subtitle;
+
+    const desc = card.querySelector('.card-desc');
+    if (desc) {
+      desc.innerHTML = '';
+      desc.appendChild(icon('images'));
+      const photoCount = dest.gallery ? dest.gallery.length : 0;
+      desc.appendChild(document.createTextNode(`${photoCount} photos`));
+    }
+
+    const lock = card.querySelector('.card-lock');
+    if (lock) {
+      const status = document.createElement('span');
+      status.className = 'card-status';
+      status.appendChild(document.createTextNode('View'));
+      status.appendChild(icon('chevronRight'));
+
+      if (animate) {
+        status.classList.add('card-status--reveal');
+        lock.classList.add('card-lock--exit');
+        lock.addEventListener(
+          'animationend',
+          () => {
+            lock.replaceWith(status);
+          },
+          { once: true }
+        );
+      } else {
+        lock.replaceWith(status);
+      }
+    }
+
+    if (animate) {
+      if (window.unlockEffects) window.unlockEffects.celebrate(card);
+
+      card.addEventListener(
+        'animationend',
+        () => {
+          card.classList.remove('card--unlocking');
+        },
+        { once: true }
+      );
+    }
+  }
+
+  function runUnlockSequence() {
+    const unlockedIndices = destinations
+      .map((dest, index) => (dest.status === 'unlocked' ? index : -1))
+      .filter((index) => index !== -1);
+
+    if (!unlockedIndices.length) {
+      updateProgress();
+      return;
+    }
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (prefersReducedMotion) {
+      unlockedIndices.forEach((index) => {
+        const card = grid.querySelector(`[data-dest-index="${index}"]`);
+        if (card) applyUnlockedPresentation(card, destinations[index], index, false);
+      });
+      updateProgress();
+      return;
+    }
+
+    unlockSequenceRunning = true;
+    grid.classList.add('playlist-grid--sequencing');
+    updateProgress(0);
+
+    unlockedIndices.forEach((destIndex, sequenceIndex) => {
+      const delay = UNLOCK_INITIAL_DELAY_MS + sequenceIndex * UNLOCK_STAGGER_MS;
+
+      setTimeout(() => {
+        const card = grid.querySelector(`[data-dest-index="${destIndex}"]`);
+        if (!card) return;
+
+        applyUnlockedPresentation(card, destinations[destIndex], destIndex, true);
+        updateProgress(sequenceIndex + 1);
+
+        if (sequenceIndex === unlockedIndices.length - 1) {
+          setTimeout(() => {
+            unlockSequenceRunning = false;
+            grid.classList.remove('playlist-grid--sequencing');
+          }, 650);
+        }
+      }, delay);
+    });
+  }
+
   function renderCards() {
     grid.innerHTML = '';
+    grid.classList.remove('playlist-grid--sequencing');
 
     destinations.forEach((dest, index) => {
-      const isUnlocked = dest.status === 'unlocked';
-      const card = document.createElement('button');
-      card.className = `card card--${isUnlocked ? 'unlocked' : 'locked'}`;
-      card.type = 'button';
-      card.setAttribute('aria-label', isUnlocked ? `Open ${dest.subtitle} gallery` : `Locked destination ${dest.title}`);
-
-      const idx = document.createElement('span');
-      idx.className = 'card-index';
-      idx.textContent = String(index + 1).padStart(2, '0');
-      card.appendChild(idx);
-
-      if (isUnlocked && dest.gallery && dest.gallery.length > 0) {
-        const thumb = document.createElement('div');
-        thumb.className = 'card-thumb';
-        thumb.appendChild(createImageWithFallback(dest.gallery[0].src, dest.gallery[0].alt, 0, 200));
-        card.appendChild(thumb);
-      } else if (!isUnlocked) {
-        const placeholder = document.createElement('span');
-        placeholder.className = 'card-lock-placeholder';
-        placeholder.appendChild(icon('map'));
-        card.appendChild(placeholder);
-      }
-
-      const body = document.createElement('div');
-      body.className = 'card-body';
-
-      const subtitle = document.createElement('h3');
-      subtitle.className = 'card-subtitle';
-      subtitle.textContent = isUnlocked ? dest.subtitle : '???';
-      body.appendChild(subtitle);
-
-      const desc = document.createElement('p');
-      desc.className = 'card-desc';
-      const photoCount = dest.gallery ? dest.gallery.length : 0;
-      if (isUnlocked) {
-        desc.appendChild(icon('images'));
-        desc.appendChild(document.createTextNode(`${photoCount} photos`));
-      } else {
-        desc.appendChild(icon('pin'));
-        desc.appendChild(document.createTextNode(dest.teaser));
-      }
-      body.appendChild(desc);
-
-      card.appendChild(body);
-
-      if (isUnlocked) {
-        const status = document.createElement('span');
-        status.className = 'card-status';
-        status.appendChild(document.createTextNode('View'));
-        status.appendChild(icon('chevronRight'));
-        card.appendChild(status);
-      } else {
-        const lock = document.createElement('span');
-        lock.className = 'card-lock';
-        lock.appendChild(icon('lock'));
-        card.appendChild(lock);
-      }
-
-      card.addEventListener('click', () => {
-        if (isUnlocked) openGallery(dest);
-        else openLocked(dest);
-      });
-
-      grid.appendChild(card);
+      grid.appendChild(createLockedCard(dest, index));
     });
+
+    runUnlockSequence();
   }
 
   function openGallery(dest) {
@@ -284,7 +368,6 @@
 
   async function init() {
     initStaticIcons();
-    setLoading(true);
 
     try {
       if (SHEET_CONFIG.spreadsheetId) {
@@ -298,8 +381,6 @@
       destinations = FALLBACK_DESTINATIONS;
     }
 
-    setLoading(false);
-    updateProgress();
     renderCards();
   }
 
