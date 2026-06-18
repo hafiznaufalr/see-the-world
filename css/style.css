@@ -504,6 +504,15 @@ body {
   .map-node__inner img.img--ready {
     transition: none;
   }
+
+  .lightbox-loader {
+    animation: none;
+    border-top-color: rgba(255, 255, 255, 0.4);
+  }
+
+  .lightbox-img {
+    transition: none;
+  }
 }
 
 .playlist-grid {
@@ -940,11 +949,54 @@ body {
   margin: 0;
 }
 
+.lightbox-stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: calc(100vh - 6rem);
+}
+
+.lightbox-loader {
+  position: absolute;
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--accent-energy);
+  border-radius: 50%;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease;
+  animation: lightboxSpin 0.7s linear infinite;
+  pointer-events: none;
+}
+
+.lightbox--loading .lightbox-loader {
+  opacity: 1;
+  visibility: visible;
+}
+
+@keyframes lightboxSpin {
+  to { transform: rotate(360deg); }
+}
+
 .lightbox-img {
   max-width: 100%;
   max-height: calc(100vh - 6rem);
   object-fit: contain;
   border-radius: 4px;
+  transition: opacity 0.28s ease, filter 0.28s ease;
+}
+
+.lightbox-img--preview {
+  filter: blur(6px);
+  opacity: 0.88;
+}
+
+.lightbox:not(.lightbox--loading) .lightbox-img {
+  filter: none;
+  opacity: 1;
 }
 
 .lightbox-caption {

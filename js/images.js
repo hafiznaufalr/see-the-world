@@ -79,6 +79,37 @@
     return cache.get(url) === 'loaded';
   }
 
+  function isProfileCached(src, profile) {
+    const url = resolveImageUrl(src, profile);
+    return cache.get(url) === 'loaded';
+  }
+
+  function preloadGalleryImages(photos) {
+    return Promise.allSettled(
+      photos.map(function (photo) {
+        return preloadImage(photo.src, 'gallery');
+      })
+    );
+  }
+
+  function preloadLightboxImages(photos) {
+    return Promise.allSettled(
+      photos.map(function (photo) {
+        return preloadImage(photo.src, 'lightbox');
+      })
+    );
+  }
+
+  function preloadLightboxNeighbors(photos, index, radius) {
+    radius = radius == null ? 2 : radius;
+    const tasks = [];
+    for (let i = index - radius; i <= index + radius; i += 1) {
+      if (i < 0 || i >= photos.length || i === index) continue;
+      tasks.push(preloadImage(photos[i].src, 'lightbox'));
+    }
+    return Promise.allSettled(tasks);
+  }
+
   function preloadImage(src, sizeOrProfile) {
     const url = resolveImageUrl(src, sizeOrProfile);
     if (!url) return Promise.resolve(null);
@@ -151,7 +182,11 @@
     resolveImageUrl: resolveImageUrl,
     driveThumbnailUrl: driveThumbnailUrl,
     isCached: isCached,
+    isProfileCached: isProfileCached,
     preloadImage: preloadImage,
+    preloadGalleryImages: preloadGalleryImages,
+    preloadLightboxImages: preloadLightboxImages,
+    preloadLightboxNeighbors: preloadLightboxNeighbors,
     preloadDestinationThumbnails: preloadDestinationThumbnails,
     mapThumbnailSize: mapThumbnailSize,
     galleryThumbnailSize: galleryThumbnailSize,

@@ -56,7 +56,10 @@
     <button class="lightbox-close" id="lightbox-close" aria-label="Close"></button>
     <button class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="Previous photo"></button>
     <figure class="lightbox-figure">
-      <img class="lightbox-img" id="lightbox-img" src="" alt="">
+      <div class="lightbox-stage">
+        <div class="lightbox-loader" id="lightbox-loader" aria-hidden="true"></div>
+        <img class="lightbox-img" id="lightbox-img" src="" alt="">
+      </div>
       <figcaption class="lightbox-caption" id="lightbox-caption"></figcaption>
     </figure>
     <button class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="Next photo"></button>

@@ -13,6 +13,7 @@
 
   const lightbox = document.getElementById('lightbox');
   const lightboxImg = document.getElementById('lightbox-img');
+  const lightboxLoader = document.getElementById('lightbox-loader');
   const lightboxCaption = document.getElementById('lightbox-caption');
   const lightboxClose = document.getElementById('lightbox-close');
   const lightboxPrev = document.getElementById('lightbox-prev');
@@ -28,6 +29,7 @@
   let destinations = [];
   let currentGallery = [];
   let lightboxIndex = 0;
+  let lightboxLoadId = 0;
   let unlockSequenceRunning = false;
   let nodePathLengths = [];
 
@@ -204,6 +206,14 @@
   }
 
   function bindNodeClick(node, dest) {
+    const prefetch = () => {
+      if (dest.status !== 'unlocked' || !dest.gallery || !dest.gallery.length) return;
+      prefetchGalleryPhotos(dest.gallery, false);
+    };
+
+    node.addEventListener('pointerenter', prefetch, { passive: true });
+    node.addEventListener('touchstart', prefetch, { passive: true });
+
     node.addEventListener('click', () => {
       if (unlockSequenceRunning) return;
       if (node.classList.contains('map-node--unlocked')) openGallery(dest);
@@ -416,6 +426,25 @@
     void runUnlockSequence();
   }
 
+  function prefetchGalleryPhotos(photos, includeLightbox) {
+    if (!window.imageLoader || !photos || !photos.length) return;
+    void window.imageLoader.preloadGalleryImages(photos);
+    if (includeLightbox) {
+      void window.imageLoader.preloadLightboxImages(photos);
+    }
+  }
+
+  function prefetchLightboxPhoto(photo, neighbors) {
+    if (!window.imageLoader || !photo) return;
+    void window.imageLoader.preloadImage(photo.src, 'lightbox');
+    if (neighbors && currentGallery.length) {
+      const index = currentGallery.indexOf(photo);
+      if (index !== -1) {
+        void window.imageLoader.preloadLightboxNeighbors(currentGallery, index, 1);
+      }
+    }
+  }
+
   function openGallery(dest) {
     galleryChapter.textContent = dest.title;
     galleryTitle.innerHTML = '';
@@ -424,6 +453,8 @@
     galleryGrid.innerHTML = '';
     currentGallery = dest.gallery || [];
 
+    prefetchGalleryPhotos(currentGallery, true);
+
     currentGallery.forEach((photo, i) => {
       const item = document.createElement('button');
       item.className = 'gallery-item';
@@ -431,7 +462,9 @@
       item.setAttribute('aria-label', photo.caption || photo.alt);
 
       const gallerySize = window.imageLoader ? 'gallery' : 600;
-      const img = createImageWithFallback(photo.src, photo.alt, i, gallerySize);
+      const img = createImageWithFallback(photo.src, photo.alt, i, gallerySize, {
+        priority: i < 6,
+      });
       item.appendChild(img);
 
       if (photo.caption) {
@@ -441,6 +474,11 @@
         item.appendChild(cap);
       }
 
+      const warmLightbox = () => prefetchLightboxPhoto(photo, true);
+      item.addEventListener('pointerenter', warmLightbox, { passive: true });
+      item.addEventListener('focus', warmLightbox, { passive: true });
+      item.addEventListener('touchstart', warmLightbox, { passive: true });
+
       item.addEventListener('click', () => openLightbox(i));
       galleryGrid.appendChild(item);
     });
@@ -448,16 +486,36 @@
     galleryModal.showModal();
   }
 
+  function setLightboxLoading(loading) {
+    lightbox.classList.toggle('lightbox--loading', loading);
+    if (lightboxLoader) lightboxLoader.setAttribute('aria-hidden', loading ? 'false' : 'true');
+  }
+
   function openLightbox(index) {
+    const loadId = ++lightboxLoadId;
     lightboxIndex = index;
     const photo = currentGallery[index];
-    const lightboxWidth = window.imageLoader ? window.imageLoader.lightboxSize() : 1280;
-    lightboxImg.src = resolveImageUrl(photo.src, window.imageLoader ? 'lightbox' : lightboxWidth);
-    lightboxImg.alt = photo.alt;
+    if (!photo) return;
+
+    const galleryUrl = resolveImageUrl(photo.src, window.imageLoader ? 'gallery' : 600);
+    const hdUrl = resolveImageUrl(photo.src, window.imageLoader ? 'lightbox' : 1280);
+    const hdReady = window.imageLoader && window.imageLoader.isProfileCached(photo.src, 'lightbox');
+
     lightboxCaption.textContent = photo.caption || photo.alt;
+    lightboxImg.alt = photo.alt;
     lightboxImg.referrerPolicy = 'no-referrer';
+    delete lightboxImg.dataset.retried;
 
     lightboxImg.onerror = () => {
+      if (lightboxLoadId !== loadId) return;
+
+      const clearOnLoad = () => {
+        if (lightboxLoadId !== loadId) return;
+        setLightboxLoading(false);
+        lightboxImg.classList.remove('lightbox-img--preview');
+      };
+      lightboxImg.addEventListener('load', clearOnLoad, { once: true });
+
       if (lightboxImg.dataset.retried) {
         lightboxImg.src = fallbackSrc(index);
         return;
@@ -472,7 +530,38 @@
       lightboxImg.src = fallbackSrc(index);
     };
 
-    lightbox.showModal();
+    if (hdReady) {
+      lightboxImg.src = hdUrl;
+      lightboxImg.classList.remove('lightbox-img--preview');
+      setLightboxLoading(false);
+    } else {
+      lightboxImg.src = galleryUrl;
+      lightboxImg.classList.add('lightbox-img--preview');
+      setLightboxLoading(true);
+
+      const showHd = (url) => {
+        if (lightboxLoadId !== loadId || lightboxIndex !== index) return;
+        if (url) lightboxImg.src = url;
+        lightboxImg.classList.remove('lightbox-img--preview');
+        setLightboxLoading(false);
+      };
+
+      if (window.imageLoader) {
+        void window.imageLoader.preloadImage(photo.src, 'lightbox').then(showHd);
+      } else {
+        const hdPreload = new Image();
+        hdPreload.referrerPolicy = 'no-referrer';
+        hdPreload.onload = () => showHd(hdUrl);
+        hdPreload.onerror = () => setLightboxLoading(false);
+        hdPreload.src = hdUrl;
+      }
+    }
+
+    if (window.imageLoader) {
+      void window.imageLoader.preloadLightboxNeighbors(currentGallery, index, 2);
+    }
+
+    if (!lightbox.open) lightbox.showModal();
   }
 
   function navigateLightbox(dir) {
@@ -542,11 +631,14 @@
       if (!window.imageLoader) return;
       dests
         .filter(function (dest) {
-          return dest.status === 'unlocked' && dest.gallery && dest.gallery.length > 1;
+          return dest.status === 'unlocked' && dest.gallery && dest.gallery.length;
         })
         .forEach(function (dest) {
-          dest.gallery.slice(0, 8).forEach(function (photo) {
+          dest.gallery.slice(0, 6).forEach(function (photo) {
             void window.imageLoader.preloadImage(photo.src, 'gallery');
+          });
+          dest.gallery.slice(0, 3).forEach(function (photo) {
+            void window.imageLoader.preloadImage(photo.src, 'lightbox');
           });
         });
     };
