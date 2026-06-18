@@ -12,8 +12,32 @@
  *    - A popup on the SPREADSHEET tab (switch away from Apps Script to see it)
  * 6. Or copy from the URL: .../spreadsheets/d/SHEET_ID/edit
  *
- * Optional: Run "createDriveFolder" to create a Google Drive folder for photos.
+ * PHOTOS FROM DRIVE:
+ * - Run "createDriveFolder" once to create chapter folders
+ * - Upload JPG/PNG into the chapter folder (not HEIC)
+ * - Run a chapter helper from the dropdown, e.g. "generateMalaysiaPhotos"
+ * - Or call generatePhotoUrlsFromDrive('02 - Malaysia', 2) with your own params
+ *
+ * UNLOCK MALAYSIA (photos already in Drive):
+ * - Run "unlockMalaysiaChapter" — imports photos + unlocks Chapter II in one step
  */
+
+var DRIVE_ROOT_NAME = 'See The World Photos';
+
+/** @type {Array<{order:number, folder:string, subtitle:string}>} */
+var CHAPTERS = [
+  { order: 1, folder: '01 - Singapore', subtitle: 'The Garden City' },
+  { order: 2, folder: '02 - Malaysia', subtitle: 'The Train Through Towers' },
+  { order: 3, folder: '03 - Locked', subtitle: '???' },
+  { order: 4, folder: '04 - Locked', subtitle: '???' },
+  { order: 5, folder: '05 - Locked', subtitle: '???' },
+  { order: 6, folder: '06 - Locked', subtitle: '???' },
+  { order: 7, folder: '07 - Locked', subtitle: '???' },
+  { order: 8, folder: '08 - Locked', subtitle: '???' },
+  { order: 9, folder: '09 - Locked', subtitle: '???' },
+  { order: 10, folder: '10 - Locked', subtitle: '???' },
+  { order: 11, folder: '11 - Locked', subtitle: 'Final Chapter' },
+];
 
 /**
  * Run this anytime to print your Sheet ID in the execution log.
@@ -37,19 +61,18 @@ function setupPlaylist() {
 
     SpreadsheetApp.flush();
 
-    // Shows in Apps Script → Eksekusi (Execution log)
     Logger.log('=== SUCCESS ===');
     Logger.log('Sheet ID: ' + sheetId);
     Logger.log('Copy this ID into js/config.js → spreadsheetId');
     Logger.log('Also check the "Config" tab in your spreadsheet.');
 
-    // Popup appears on the SPREADSHEET tab (not Apps Script) — switch to your sheet window
     SpreadsheetApp.getUi().alert(
       'Playlist sheet is ready!\n\nSheet ID:\n' +
         sheetId +
         '\n\n1. Copy the Sheet ID into js/config.js on your website\n' +
         '2. Share this sheet: Anyone with the link → Viewer\n' +
-        '3. See the "Config" tab for your Sheet ID anytime'
+        '3. See the "Config" tab for your Sheet ID anytime\n' +
+        '4. Upload photos to Drive, then run generateMalaysiaPhotos (or unlockMalaysiaChapter)'
     );
   } catch (err) {
     Logger.log('=== ERROR ===');
@@ -71,6 +94,7 @@ function setupConfigTab(ss, sheetId) {
   sheet.getRange('A7').setValue('1. Share → Anyone with the link → Viewer');
   sheet.getRange('A8').setValue('2. Paste Sheet ID into js/config.js on your website');
   sheet.getRange('A9').setValue('3. Push to GitHub once');
+  sheet.getRange('A10').setValue('4. Drive photos: run generateMalaysiaPhotos or unlockMalaysiaChapter');
   sheet.setColumnWidth(1, 420);
 }
 
@@ -92,14 +116,7 @@ function setupDestinationsTab(ss) {
   const headers = ['order', 'status', 'title', 'subtitle', 'teaser', 'hint'];
   const rows = [
     [1, 'unlocked', 'Chapter I', 'The Garden City', '', ''],
-    [
-      2,
-      'locked',
-      'Chapter II',
-      '???',
-      'Train · Coffee · Caves',
-      'Where trains pierce through towers, white coffee steams at dawn, and limestone cliffs hide temples older than memory.',
-    ],
+    [2, 'unlocked', 'Chapter II', 'The Train Through Towers', '', ''],
     [
       3,
       'locked',
@@ -223,24 +240,10 @@ function setupPhotosTab(ss) {
  * Run once, then upload photos into the chapter subfolders.
  */
 function createDriveFolder() {
-  const root = DriveApp.createFolder('See The World Photos');
+  const root = DriveApp.createFolder(DRIVE_ROOT_NAME);
 
-  const chapters = [
-    '01 - Singapore',
-    '02 - Malaysia',
-    '03 - Locked',
-    '04 - Locked',
-    '05 - Locked',
-    '06 - Locked',
-    '07 - Locked',
-    '08 - Locked',
-    '09 - Locked',
-    '10 - Locked',
-    '11 - Locked',
-  ];
-
-  chapters.forEach(function (name) {
-    root.createFolder(name);
+  CHAPTERS.forEach(function (chapter) {
+    root.createFolder(chapter.folder);
   });
 
   root.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
@@ -249,30 +252,65 @@ function createDriveFolder() {
     'Drive folder created!\n\n' +
       root.getName() +
       '\n\nOpen Google Drive and upload photos into each chapter folder.\n\n' +
-      'Then run "generatePhotoUrls" to build URLs for the Photos tab.'
+      'Then run:\n' +
+      '• generateSingaporePhotos\n' +
+      '• generateMalaysiaPhotos\n' +
+      '• unlockMalaysiaChapter (photos + unlock in one step)'
   );
 }
 
 /**
- * Reads images from "01 - Singapore" folder and writes Drive URLs into Photos tab.
- * Update FOLDER_NAME when you add photos for other chapters.
+ * Look up chapter config by order (1–11) or folder name.
  */
-function generatePhotoUrlsFromDrive() {
-  const FOLDER_NAME = '01 - Singapore';
-  const DESTINATION_ORDER = 1;
+function getChapterConfig(orderOrFolder) {
+  if (orderOrFolder == null || orderOrFolder === '') return null;
 
-  const root = DriveApp.getFoldersByName('See The World Photos');
-  if (!root.hasNext()) {
-    SpreadsheetApp.getUi().alert('Run "createDriveFolder" first.');
-    return;
+  if (typeof orderOrFolder === 'number' || String(orderOrFolder).match(/^\d+$/)) {
+    const order = Number(orderOrFolder);
+    for (var i = 0; i < CHAPTERS.length; i++) {
+      if (CHAPTERS[i].order === order) return CHAPTERS[i];
+    }
+    return null;
   }
 
-  const chapterFolder = root
-    .next()
-    .getFoldersByName(FOLDER_NAME);
+  const folderName = String(orderOrFolder);
+  for (var j = 0; j < CHAPTERS.length; j++) {
+    if (CHAPTERS[j].folder === folderName) return CHAPTERS[j];
+  }
+  return null;
+}
+
+/**
+ * Import Drive photos into the Photos tab for one chapter.
+ *
+ * @param {string} folderName - Drive subfolder, e.g. '02 - Malaysia'
+ * @param {number} destinationOrder - Matches Destinations.order, e.g. 2
+ * @param {Object=} options
+ * @param {boolean=} options.silent - Skip success alert (for batch runs)
+ * @returns {number} Number of photos added
+ */
+function generatePhotoUrlsFromDrive(folderName, destinationOrder, options) {
+  options = options || {};
+
+  if (!folderName || folderName === '') {
+    throw new Error('folderName is required, e.g. "02 - Malaysia"');
+  }
+  if (destinationOrder == null || destinationOrder === '' || isNaN(Number(destinationOrder))) {
+    throw new Error('destinationOrder is required, e.g. 2');
+  }
+
+  destinationOrder = Number(destinationOrder);
+
+  const root = DriveApp.getFoldersByName(DRIVE_ROOT_NAME);
+  if (!root.hasNext()) {
+    SpreadsheetApp.getUi().alert('Run "createDriveFolder" first.');
+    return 0;
+  }
+
+  const chapterFolder = root.next().getFoldersByName(folderName);
   if (!chapterFolder.hasNext()) {
-    SpreadsheetApp.getUi().alert('Folder not found: ' + FOLDER_NAME);
-    return;
+    SpreadsheetApp.getUi().alert('Folder not found: ' + folderName);
+    return 0;
   }
 
   const fileIterator = chapterFolder.next().getFiles();
@@ -286,7 +324,6 @@ function generatePhotoUrlsFromDrive() {
 
     if (mime.indexOf('image/') !== 0) continue;
 
-    // HEIC/HEIF won't display in web browsers — convert to JPG first
     if (mime === 'image/heif' || mime === 'image/heic' || name.endsWith('.heic') || name.endsWith('.heif')) {
       skippedHeic++;
       continue;
@@ -295,48 +332,162 @@ function generatePhotoUrlsFromDrive() {
     imageFiles.push(file);
   }
 
-  // Drive API returns files in arbitrary order — sort by filename (matches Drive "Name" sort)
   imageFiles.sort(function (a, b) {
     return a.getName().localeCompare(b.getName(), undefined, { numeric: true, sensitivity: 'base' });
   });
 
   const photos = imageFiles.map(function (file, index) {
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    const url = 'https://lh3.googleusercontent.com/d/' + file.getId() + '=w1200';
-    return [DESTINATION_ORDER, index + 1, url, file.getName(), ''];
+    // Client requests smaller compressed variants (=w…-rw-k-no); store a modest default
+    const url = 'https://lh3.googleusercontent.com/d/' + file.getId() + '=w800-rw-k-no';
+    return [destinationOrder, index + 1, url, file.getName(), ''];
   });
 
   if (photos.length === 0) {
-    var msg = 'No web-ready images found in "' + FOLDER_NAME + '".';
+    var msg = 'No web-ready images found in "' + folderName + '".';
     if (skippedHeic > 0) {
       msg += '\n\nSkipped ' + skippedHeic + ' HEIC file(s). Convert to JPG first, then re-upload.';
     } else {
-      msg += ' Upload JPG or PNG photos first.';
+      msg += '\n\nUpload JPG or PNG photos first.';
     }
     SpreadsheetApp.getUi().alert(msg);
-    return;
+    return 0;
   }
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName('Photos');
-
-  // Remove existing rows for this destination
-  const data = sheet.getDataRange().getValues();
-  const kept = [data[0]];
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][0]) !== String(DESTINATION_ORDER)) kept.push(data[i]);
+  if (!sheet) {
+    SpreadsheetApp.getUi().alert('Photos tab not found. Run setupPlaylist first.');
+    return 0;
   }
 
+  const data = sheet.getDataRange().getValues();
+  const kept = data.length ? [data[0]] : [['destination_order', 'sort_order', 'url', 'alt', 'caption']];
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) !== String(destinationOrder)) kept.push(data[i]);
+  }
+
+  const allRows = kept.concat(photos);
+
   sheet.clear();
-  sheet.getRange(1, 1, kept.length, kept[0].length).setValues(kept);
-  sheet
-    .getRange(kept.length + 1, 1, photos.length, photos[0].length)
-    .setValues(photos);
+  sheet.getRange(1, 1, allRows.length, allRows[0].length).setValues(allRows);
+  sheet.setFrozenRows(1);
+
+  if (!options.silent) {
+    SpreadsheetApp.getUi().alert(
+      'Chapter ' +
+        destinationOrder +
+        ' — added ' +
+        photos.length +
+        ' photo URL(s) from "' +
+        folderName +
+        '".' +
+        (skippedHeic > 0
+          ? '\n\nSkipped ' + skippedHeic + ' HEIC file(s) — convert those to JPG and re-upload.'
+          : '')
+    );
+  }
+
+  Logger.log('generatePhotoUrlsFromDrive: ' + folderName + ' → ' + photos.length + ' photos');
+  return photos.length;
+}
+
+/**
+ * Import photos using chapter order (looks up folder from CHAPTERS).
+ * @param {number} chapterOrder - 1–11
+ */
+function generatePhotoUrlsForChapter(chapterOrder) {
+  const chapter = getChapterConfig(chapterOrder);
+  if (!chapter) {
+    SpreadsheetApp.getUi().alert('Unknown chapter order: ' + chapterOrder);
+    return 0;
+  }
+  return generatePhotoUrlsFromDrive(chapter.folder, chapter.order);
+}
+
+/** Run from dropdown — Singapore (Chapter I) */
+function generateSingaporePhotos() {
+  return generatePhotoUrlsForChapter(1);
+}
+
+/** Run from dropdown — Malaysia (Chapter II) */
+function generateMalaysiaPhotos() {
+  return generatePhotoUrlsForChapter(2);
+}
+
+/**
+ * Unlock a destination row in the Destinations tab.
+ * @param {number} order - Chapter order (1–11)
+ * @param {string=} subtitle - Shown when unlocked; defaults to CHAPTERS config
+ */
+function unlockDestination(order, subtitle) {
+  const chapter = getChapterConfig(order);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Destinations');
+  if (!sheet) {
+    SpreadsheetApp.getUi().alert('Destinations tab not found.');
+    return false;
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const resolvedSubtitle = subtitle || (chapter ? chapter.subtitle : '');
+
+  for (var i = 1; i < data.length; i++) {
+    if (Number(data[i][0]) === Number(order)) {
+      sheet.getRange(i + 1, 2).setValue('unlocked');
+      if (resolvedSubtitle) sheet.getRange(i + 1, 4).setValue(resolvedSubtitle);
+      sheet.getRange(i + 1, 5).setValue('');
+      sheet.getRange(i + 1, 6).setValue('');
+      SpreadsheetApp.flush();
+      Logger.log('Unlocked destination order ' + order + ' → ' + resolvedSubtitle);
+      return true;
+    }
+  }
+
+  SpreadsheetApp.getUi().alert('Destination order ' + order + ' not found in Destinations tab.');
+  return false;
+}
+
+/**
+ * One-step Malaysia unlock: imports Drive photos + unlocks Chapter II.
+ * Upload photos to "02 - Malaysia" first, then run this.
+ */
+function unlockMalaysiaChapter() {
+  const count = generatePhotoUrlsFromDrive('02 - Malaysia', 2, { silent: true });
+  if (count === 0) return;
+
+  unlockDestination(2, 'The Train Through Towers');
 
   SpreadsheetApp.getUi().alert(
-    'Added ' + photos.length + ' photo URLs from Drive to the Photos tab.' +
-      (skippedHeic > 0
-        ? '\n\nSkipped ' + skippedHeic + ' HEIC file(s) — convert those to JPG and re-upload.'
-        : '')
+    'Malaysia chapter is live!\n\n' +
+      '• ' +
+      count +
+      ' photo(s) added to Photos tab\n' +
+      '• Chapter II unlocked in Destinations tab\n\n' +
+      'Refresh your website to see the update.'
+  );
+}
+
+/**
+ * Import photos for every chapter folder that has images.
+ * Skips empty folders silently.
+ */
+function generateAllChapterPhotos() {
+  let total = 0;
+  let chapters = 0;
+
+  CHAPTERS.forEach(function (chapter) {
+    const count = generatePhotoUrlsFromDrive(chapter.folder, chapter.order, { silent: true });
+    if (count > 0) {
+      total += count;
+      chapters++;
+      Logger.log(chapter.folder + ': ' + count + ' photos');
+    }
+  });
+
+  SpreadsheetApp.getUi().alert(
+    chapters > 0
+      ? 'Imported ' + total + ' photo(s) across ' + chapters + ' chapter(s).'
+      : 'No photos found in any chapter folder.'
   );
 }

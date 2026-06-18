@@ -268,7 +268,7 @@
       inner.classList.remove('map-node__inner--locked');
       inner.innerHTML = '';
       if (dest.gallery && dest.gallery.length > 0) {
-        const thumbSize = window.imageLoader ? window.imageLoader.mapThumbnailSize() : 200;
+        const thumbSize = window.imageLoader ? 'map' : 200;
         inner.appendChild(
           createImageWithFallback(dest.gallery[0].src, dest.gallery[0].alt, index, thumbSize, {
             priority: animate,
@@ -357,7 +357,7 @@
       updateProgress(0);
     }
 
-    const thumbSize = window.imageLoader ? window.imageLoader.mapThumbnailSize() : 200;
+    const thumbSize = window.imageLoader ? 'map' : 200;
     const preloadTargets = animateIndices
       .map((index) => destinations[index])
       .filter((dest) => dest.gallery && dest.gallery.length > 0);
@@ -430,7 +430,7 @@
       item.type = 'button';
       item.setAttribute('aria-label', photo.caption || photo.alt);
 
-      const gallerySize = window.imageLoader ? window.imageLoader.galleryThumbnailSize() : 600;
+      const gallerySize = window.imageLoader ? 'gallery' : 600;
       const img = createImageWithFallback(photo.src, photo.alt, i, gallerySize);
       item.appendChild(img);
 
@@ -451,7 +451,8 @@
   function openLightbox(index) {
     lightboxIndex = index;
     const photo = currentGallery[index];
-    lightboxImg.src = resolveImageUrl(photo.src, 1600);
+    const lightboxWidth = window.imageLoader ? window.imageLoader.lightboxSize() : 1280;
+    lightboxImg.src = resolveImageUrl(photo.src, window.imageLoader ? 'lightbox' : lightboxWidth);
     lightboxImg.alt = photo.alt;
     lightboxCaption.textContent = photo.caption || photo.alt;
     lightboxImg.referrerPolicy = 'no-referrer';
@@ -464,7 +465,8 @@
       lightboxImg.dataset.retried = '1';
       const driveIdMatch = photo.src.match(/[?&]id=([\w-]+)/) || photo.src.match(/\/d\/([\w-]+)/);
       if (driveIdMatch) {
-        lightboxImg.src = 'https://drive.google.com/thumbnail?id=' + driveIdMatch[1] + '&sz=w1600';
+        const sz = window.imageLoader ? window.imageLoader.lightboxSize() : 1280;
+        lightboxImg.src = 'https://drive.google.com/thumbnail?id=' + driveIdMatch[1] + '&sz=w' + sz;
         return;
       }
       lightboxImg.src = fallbackSrc(index);
@@ -528,8 +530,7 @@
     }
 
     if (window.imageLoader) {
-      const thumbSize = window.imageLoader.mapThumbnailSize();
-      void window.imageLoader.preloadDestinationThumbnails(destinations, thumbSize);
+      void window.imageLoader.preloadDestinationThumbnails(destinations);
       scheduleGalleryPreload(destinations);
     }
 
@@ -539,14 +540,13 @@
   function scheduleGalleryPreload(dests) {
     const run = function () {
       if (!window.imageLoader) return;
-      const size = window.imageLoader.galleryThumbnailSize();
       dests
         .filter(function (dest) {
           return dest.status === 'unlocked' && dest.gallery && dest.gallery.length > 1;
         })
         .forEach(function (dest) {
           dest.gallery.slice(0, 8).forEach(function (photo) {
-            void window.imageLoader.preloadImage(photo.src, size);
+            void window.imageLoader.preloadImage(photo.src, 'gallery');
           });
         });
     };
