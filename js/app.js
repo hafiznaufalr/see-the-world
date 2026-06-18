@@ -31,18 +31,34 @@
   let unlockSequenceRunning = false;
   let nodePathLengths = [];
 
+  const UNLOCK_SEEN_KEY = 'stw-last-animated-dest-index';
   const UNLOCK_INITIAL_DELAY_MS = 450;
   const UNLOCK_STAGGER_MS = 550;
+  const UNLOCK_STAGGER_MOBILE_MS = 400;
+  const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+
+  if (isTouchDevice) {
+    document.documentElement.classList.add('touch-device');
+  }
 
   function resolveImageUrl(src, size) {
-    if (!src) return src;
-
-    var driveIdMatch = src.match(/[?&]id=([\w-]+)/) || src.match(/\/d\/([\w-]+)/);
-    if (driveIdMatch && src.indexOf('drive.google.com') !== -1) {
-      return 'https://lh3.googleusercontent.com/d/' + driveIdMatch[1] + '=w' + (size || 1200);
-    }
-
+    if (window.imageLoader) return window.imageLoader.resolveImageUrl(src, size);
     return src;
+  }
+
+  function getUnlockStaggerMs() {
+    return window.matchMedia('(max-width: 480px)').matches ? UNLOCK_STAGGER_MOBILE_MS : UNLOCK_STAGGER_MS;
+  }
+
+  function getLastAnimatedIndex() {
+    const stored = localStorage.getItem(UNLOCK_SEEN_KEY);
+    if (stored == null || stored === '') return -1;
+    const value = parseInt(stored, 10);
+    return Number.isNaN(value) ? -1 : value;
+  }
+
+  function setLastAnimatedIndex(index) {
+    localStorage.setItem(UNLOCK_SEEN_KEY, String(index));
   }
 
   function fallbackSrc(index) {
@@ -83,22 +99,48 @@
     setIcon(document.getElementById('locked-icon'), 'lock');
   }
 
-  function createImageWithFallback(src, alt, fallbackIndex, size) {
+  function createImageWithFallback(src, alt, fallbackIndex, size, options) {
+    options = options || {};
     const img = document.createElement('img');
-    img.src = resolveImageUrl(src, size);
+    const url = resolveImageUrl(src, size);
     img.alt = alt;
-    img.loading = 'lazy';
     img.referrerPolicy = 'no-referrer';
+    img.decoding = 'async';
+
+    if (options.priority) {
+      img.loading = 'eager';
+      if ('fetchPriority' in img) img.fetchPriority = 'high';
+    } else {
+      img.loading = 'lazy';
+    }
+
+    if (window.imageLoader && window.imageLoader.isCached(url)) {
+      img.classList.add('img--ready');
+    } else {
+      img.classList.add('img--loading');
+      img.addEventListener(
+        'load',
+        () => {
+          img.classList.remove('img--loading');
+          img.classList.add('img--ready');
+        },
+        { once: true }
+      );
+    }
+
+    img.src = url;
     img.addEventListener('error', () => {
       if (img.dataset.retried) {
         img.src = fallbackSrc(fallbackIndex);
         return;
       }
       img.dataset.retried = '1';
-      // Retry with Drive thumbnail endpoint
-      const driveIdMatch = src.match(/[?&]id=([\w-]+)/) || src.match(/\/d\/([\w-]+)/);
-      if (driveIdMatch) {
-        img.src = 'https://drive.google.com/thumbnail?id=' + driveIdMatch[1] + '&sz=w1000';
+      const thumb =
+        window.imageLoader && window.imageLoader.driveThumbnailUrl
+          ? window.imageLoader.driveThumbnailUrl(src, size || 1000)
+          : null;
+      if (thumb) {
+        img.src = thumb;
         return;
       }
       img.src = fallbackSrc(fallbackIndex);
@@ -131,7 +173,7 @@
     lit.setAttribute('class', 'world-map__path world-map__path--lit');
     lit.setAttribute('d', MAP_PATH_D);
     lit.setAttribute('id', 'map-path-lit');
-    lit.setAttribute('filter', 'url(#path-glow)');
+    if (!isTouchDevice) lit.setAttribute('filter', 'url(#path-glow)');
     svg.appendChild(lit);
 
     return svg;
@@ -148,7 +190,10 @@
         : 0;
 
     litPath.style.strokeDasharray = `${total}`;
-    litPath.style.transition = animate ? 'stroke-dashoffset 0.65s cubic-bezier(0.22, 1, 0.36, 1)' : 'none';
+    const duration = isTouchDevice ? '0.45s' : '0.65s';
+    litPath.style.transition = animate
+      ? `stroke-dashoffset ${duration} cubic-bezier(0.22, 1, 0.36, 1)`
+      : 'none';
     litPath.style.strokeDashoffset = `${Math.max(total - visible, 0)}`;
   }
 
@@ -223,7 +268,12 @@
       inner.classList.remove('map-node__inner--locked');
       inner.innerHTML = '';
       if (dest.gallery && dest.gallery.length > 0) {
-        inner.appendChild(createImageWithFallback(dest.gallery[0].src, dest.gallery[0].alt, index, 200));
+        const thumbSize = window.imageLoader ? window.imageLoader.mapThumbnailSize() : 200;
+        inner.appendChild(
+          createImageWithFallback(dest.gallery[0].src, dest.gallery[0].alt, index, thumbSize, {
+            priority: animate,
+          })
+        );
       } else {
         inner.appendChild(icon('map'));
       }
@@ -253,7 +303,7 @@
     }
   }
 
-  function runUnlockSequence() {
+  async function runUnlockSequence() {
     const unlockedIndices = destinations
       .map((dest, index) => (dest.status === 'unlocked' ? index : -1))
       .filter((index) => index !== -1);
@@ -266,36 +316,82 @@
     }
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const lastAnimated = getLastAnimatedIndex();
+    const instantIndices = unlockedIndices.filter((index) => index <= lastAnimated);
+    let animateIndices = unlockedIndices.filter((index) => index > lastAnimated);
+    const maxUnlocked = unlockedIndices[unlockedIndices.length - 1];
 
-    if (prefersReducedMotion) {
+    let skipAnimateIndices = [];
+    if (animateIndices.length > 1) {
+      skipAnimateIndices = animateIndices.slice(0, -1);
+      animateIndices = animateIndices.slice(-1);
+    }
+
+    const allInstant = instantIndices.concat(skipAnimateIndices);
+
+    if (prefersReducedMotion || !animateIndices.length) {
       unlockedIndices.forEach((index) => {
         const node = grid.querySelector(`[data-dest-index="${index}"]`);
         if (node) applyUnlockedPresentation(node, destinations[index], index, false);
       });
-      updateMapPath(unlockedIndices[unlockedIndices.length - 1], false);
+      updateMapPath(maxUnlocked, false);
       updateProgress();
+      if (maxUnlocked > lastAnimated) setLastAnimatedIndex(maxUnlocked);
       return;
+    }
+
+    instantIndices.forEach((index) => {
+      const node = grid.querySelector(`[data-dest-index="${index}"]`);
+      if (node) applyUnlockedPresentation(node, destinations[index], index, false);
+    });
+
+    skipAnimateIndices.forEach((index) => {
+      const node = grid.querySelector(`[data-dest-index="${index}"]`);
+      if (node) applyUnlockedPresentation(node, destinations[index], index, false);
+    });
+
+    if (allInstant.length) {
+      updateMapPath(allInstant[allInstant.length - 1], false);
+      updateProgress(allInstant.length);
+    } else {
+      updateProgress(0);
+    }
+
+    const thumbSize = window.imageLoader ? window.imageLoader.mapThumbnailSize() : 200;
+    const preloadTargets = animateIndices
+      .map((index) => destinations[index])
+      .filter((dest) => dest.gallery && dest.gallery.length > 0);
+
+    if (window.imageLoader && preloadTargets.length) {
+      await Promise.race([
+        Promise.allSettled(
+          preloadTargets.map((dest) => window.imageLoader.preloadImage(dest.gallery[0].src, thumbSize))
+        ),
+        new Promise((resolve) => setTimeout(resolve, isTouchDevice ? 2200 : 3500)),
+      ]);
     }
 
     unlockSequenceRunning = true;
     grid.classList.add('world-map--sequencing');
-    updateProgress(0);
+    const staggerMs = getUnlockStaggerMs();
+    const initialDelay = isTouchDevice ? 280 : UNLOCK_INITIAL_DELAY_MS;
 
-    unlockedIndices.forEach((destIndex, sequenceIndex) => {
-      const delay = UNLOCK_INITIAL_DELAY_MS + sequenceIndex * UNLOCK_STAGGER_MS;
+    animateIndices.forEach((destIndex, sequenceIndex) => {
+      const delay = initialDelay + sequenceIndex * staggerMs;
 
       setTimeout(() => {
         const node = grid.querySelector(`[data-dest-index="${destIndex}"]`);
         if (!node) return;
 
         applyUnlockedPresentation(node, destinations[destIndex], destIndex, true);
-        updateProgress(sequenceIndex + 1);
+        updateProgress(allInstant.length + sequenceIndex + 1);
 
-        if (sequenceIndex === unlockedIndices.length - 1) {
+        if (sequenceIndex === animateIndices.length - 1) {
           setTimeout(() => {
             unlockSequenceRunning = false;
             grid.classList.remove('world-map--sequencing');
-          }, 650);
+            setLastAnimatedIndex(maxUnlocked);
+          }, isTouchDevice ? 480 : 650);
         }
       }, delay);
     });
@@ -317,7 +413,7 @@
 
     grid.appendChild(nodesLayer);
     cacheNodePathLengths();
-    runUnlockSequence();
+    void runUnlockSequence();
   }
 
   function openGallery(dest) {
@@ -334,7 +430,8 @@
       item.type = 'button';
       item.setAttribute('aria-label', photo.caption || photo.alt);
 
-      const img = createImageWithFallback(photo.src, photo.alt, i, 600);
+      const gallerySize = window.imageLoader ? window.imageLoader.galleryThumbnailSize() : 600;
+      const img = createImageWithFallback(photo.src, photo.alt, i, gallerySize);
       item.appendChild(img);
 
       if (photo.caption) {
@@ -430,7 +527,35 @@
       destinations = FALLBACK_DESTINATIONS;
     }
 
+    if (window.imageLoader) {
+      const thumbSize = window.imageLoader.mapThumbnailSize();
+      void window.imageLoader.preloadDestinationThumbnails(destinations, thumbSize);
+      scheduleGalleryPreload(destinations);
+    }
+
     renderCards();
+  }
+
+  function scheduleGalleryPreload(dests) {
+    const run = function () {
+      if (!window.imageLoader) return;
+      const size = window.imageLoader.galleryThumbnailSize();
+      dests
+        .filter(function (dest) {
+          return dest.status === 'unlocked' && dest.gallery && dest.gallery.length > 1;
+        })
+        .forEach(function (dest) {
+          dest.gallery.slice(0, 8).forEach(function (photo) {
+            void window.imageLoader.preloadImage(photo.src, size);
+          });
+        });
+    };
+
+    if ('requestIdleCallback' in window) {
+      requestIdleCallback(run, { timeout: 3000 });
+    } else {
+      setTimeout(run, 1200);
+    }
   }
 
   init();

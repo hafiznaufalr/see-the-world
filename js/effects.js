@@ -6,6 +6,11 @@
   let rafId = null;
   let audioCtx = null;
 
+  function isLiteEffects() {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
+      window.matchMedia('(max-width: 480px), (hover: none) and (pointer: coarse)').matches;
+  }
+
   function ensureCanvas() {
     if (canvas) return;
     canvas = document.createElement('canvas');
@@ -124,7 +129,7 @@
     const rect = el.getBoundingClientRect();
     const x = rect.left + Math.min(rect.width * 0.2, 48);
     const y = rect.top + rect.height / 2;
-    const count = 36;
+    const count = isLiteEffects() ? 12 : 36;
 
     for (let i = 0; i < count; i += 1) {
       particles.push(createParticle(x, y));

@@ -233,6 +233,7 @@ body {
   cursor: pointer;
   font-family: inherit;
   color: inherit;
+  contain: layout style;
 }
 
 .map-node:focus-visible {
@@ -313,6 +314,15 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.map-node__inner img.img--loading {
+  opacity: 0;
+}
+
+.map-node__inner img.img--ready {
+  opacity: 1;
+  transition: opacity 0.25s ease;
 }
 
 .map-node__inner--locked .icon {
@@ -422,6 +432,34 @@ body {
   }
 }
 
+.touch-device .world-map__path--lit {
+  filter: none;
+}
+
+.touch-device .map-node--unlocking {
+  animation: mapNodeUnlockTouch 0.48s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.touch-device .map-node--unlocking .map-node__ring {
+  animation: mapRingPulseTouch 0.48s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes mapNodeUnlockTouch {
+  0% { transform: translate(-50%, -50%) scale(0.94); }
+  55% { transform: translate(-50%, -50%) scale(1.05); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+@keyframes mapRingPulseTouch {
+  0% { transform: scale(0.92); border-color: #262626; }
+  55% { transform: scale(1.06); border-color: #d9f99d; }
+  100% { transform: scale(1); border-color: var(--accent-energy); }
+}
+
+.world-map--sequencing {
+  contain: layout style;
+}
+
 @media (max-width: 480px) {
   .main {
     padding: 1.75rem 1.25rem 4rem;
@@ -453,12 +491,18 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .map-node--unlocking,
-  .map-node--unlocking .map-node__ring {
+  .map-node--unlocking .map-node__ring,
+  .touch-device .map-node--unlocking,
+  .touch-device .map-node--unlocking .map-node__ring {
     animation: none;
   }
 
   .world-map__path--lit {
     transition: none !important;
+  }
+
+  .map-node__inner img.img--ready {
+    transition: none;
   }
 }
 
