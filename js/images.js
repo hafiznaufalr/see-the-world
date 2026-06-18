@@ -1,5 +1,6 @@
 (function () {
   const cache = new Map();
+  const WEBP_QUALITY = 78;
 
   const PROFILES = {
     map: { width: 160, height: 160, mobileWidth: 128, crop: true },
@@ -18,46 +19,69 @@
   }
 
   /**
-   * Build a size-limited Googleusercontent URL.
-   * -rw = resize width, -k-no = never upscale, -c = center crop (map thumbs)
+   * Googleusercontent URL suffix (Blogger / Drive CDN params):
+   * - w# / h# = max dimensions, -c = center crop
+   * - rw = WebP output, rj = JPEG output
+   * - lo = lossy, l# = quality (1–100), k-no = never upscale
    */
-  function buildDriveImageUrl(fileId, profileName) {
-    const profile = PROFILES[profileName];
-    if (!profile) {
-      return 'https://lh3.googleusercontent.com/d/' + fileId + '=w800-rw-k-no';
-    }
+  function buildDriveImageSuffix(width, height, crop, format) {
+    let suffix = '=w' + width;
+    if (crop && height) suffix += '-h' + height + '-c';
+    suffix += format === 'jpeg' ? '-rj-lo-l' + WEBP_QUALITY : '-rw-lo-l' + WEBP_QUALITY;
+    suffix += '-k-no';
+    return suffix;
+  }
 
+  function getProfileDimensions(profile) {
     let width = profile.width;
-    if (profile.mobileWidth && isMobileViewport()) {
-      width = profile.mobileWidth;
-    }
+    if (profile.mobileWidth && isMobileViewport()) width = profile.mobileWidth;
 
     let height = profile.height;
     if (profile.crop && profile.height && profile.mobileWidth && isMobileViewport()) {
       height = profile.mobileWidth;
     }
 
-    let suffix = '=w' + width;
-    if (profile.crop && height) {
-      suffix += '-h' + height + '-c';
-    }
-    suffix += '-rw-k-no';
-
-    return 'https://lh3.googleusercontent.com/d/' + fileId + suffix;
+    return { width: width, height: height, crop: !!profile.crop };
   }
 
-  function resolveImageUrl(src, sizeOrProfile) {
+  function buildDriveImageUrl(fileId, profileName, format) {
+    format = format || 'webp';
+    const profile = PROFILES[profileName];
+
+    if (!profile) {
+      return (
+        'https://lh3.googleusercontent.com/d/' +
+        fileId +
+        buildDriveImageSuffix(800, null, false, format)
+      );
+    }
+
+    const dims = getProfileDimensions(profile);
+    return (
+      'https://lh3.googleusercontent.com/d/' +
+      fileId +
+      buildDriveImageSuffix(dims.width, dims.height, dims.crop, format)
+    );
+  }
+
+  function resolveImageUrl(src, sizeOrProfile, format) {
     if (!src) return src;
 
     const fileId = extractDriveFileId(src);
     if (!fileId) return src;
 
+    format = format || 'webp';
+
     if (typeof sizeOrProfile === 'string' && PROFILES[sizeOrProfile]) {
-      return buildDriveImageUrl(fileId, sizeOrProfile);
+      return buildDriveImageUrl(fileId, sizeOrProfile, format);
     }
 
     const width = typeof sizeOrProfile === 'number' ? sizeOrProfile : 800;
-    return 'https://lh3.googleusercontent.com/d/' + fileId + '=w' + width + '-rw-k-no';
+    return (
+      'https://lh3.googleusercontent.com/d/' +
+      fileId +
+      buildDriveImageSuffix(width, null, false, format)
+    );
   }
 
   function driveThumbnailUrl(src, sizeOrProfile) {
@@ -80,8 +104,75 @@
   }
 
   function isProfileCached(src, profile) {
-    const url = resolveImageUrl(src, profile);
-    return cache.get(url) === 'loaded';
+    return (
+      isCached(resolveImageUrl(src, profile, 'webp')) ||
+      isCached(resolveImageUrl(src, profile, 'jpeg'))
+    );
+  }
+
+  function loadImageUrl(url) {
+    if (!url) return Promise.resolve(null);
+
+    const existing = cache.get(url);
+    if (existing === 'loaded') return Promise.resolve(url);
+    if (existing) return existing;
+
+    const promise = new Promise(function (resolve, reject) {
+      const img = new Image();
+      img.referrerPolicy = 'no-referrer';
+      img.decoding = 'async';
+
+      img.onload = function () {
+        const done = function () {
+          cache.set(url, 'loaded');
+          resolve(url);
+        };
+        if (img.decode) {
+          img.decode().then(done).catch(done);
+        } else {
+          done();
+        }
+      };
+
+      img.onerror = function () {
+        cache.delete(url);
+        reject(new Error('Image load failed'));
+      };
+
+      img.src = url;
+    });
+
+    cache.set(url, promise);
+    return promise;
+  }
+
+  function preloadImage(src, sizeOrProfile) {
+    const webpUrl = resolveImageUrl(src, sizeOrProfile, 'webp');
+    const jpegUrl = resolveImageUrl(src, sizeOrProfile, 'jpeg');
+
+    if (isCached(webpUrl)) return Promise.resolve(webpUrl);
+    if (isCached(jpegUrl)) return Promise.resolve(jpegUrl);
+
+    const inflight = cache.get('inflight:' + webpUrl);
+    if (inflight) return inflight;
+
+    const promise = loadImageUrl(webpUrl)
+      .catch(function () {
+        if (jpegUrl !== webpUrl) return loadImageUrl(jpegUrl);
+        throw new Error('WebP and JPEG URLs identical');
+      })
+      .catch(function () {
+        const thumb = driveThumbnailUrl(src, sizeOrProfile);
+        if (thumb) return loadImageUrl(thumb);
+        return null;
+      });
+
+    cache.set('inflight:' + webpUrl, promise);
+    promise.finally(function () {
+      cache.delete('inflight:' + webpUrl);
+    });
+
+    return promise;
   }
 
   function preloadGalleryImages(photos) {
@@ -108,50 +199,6 @@
       tasks.push(preloadImage(photos[i].src, 'lightbox'));
     }
     return Promise.allSettled(tasks);
-  }
-
-  function preloadImage(src, sizeOrProfile) {
-    const url = resolveImageUrl(src, sizeOrProfile);
-    if (!url) return Promise.resolve(null);
-
-    const existing = cache.get(url);
-    if (existing === 'loaded') return Promise.resolve(url);
-    if (existing) return existing;
-
-    const promise = new Promise(function (resolve) {
-      const img = new Image();
-      img.referrerPolicy = 'no-referrer';
-      img.decoding = 'async';
-
-      function finish(resolvedUrl) {
-        cache.set(url, 'loaded');
-        resolve(resolvedUrl);
-      }
-
-      img.onload = function () {
-        if (img.decode) {
-          img.decode().then(function () { finish(url); }).catch(function () { finish(url); });
-        } else {
-          finish(url);
-        }
-      };
-
-      img.onerror = function () {
-        const fallback = driveThumbnailUrl(src, sizeOrProfile);
-        if (fallback && fallback !== url) {
-          cache.delete(url);
-          preloadImage(fallback, null).then(resolve);
-          return;
-        }
-        cache.delete(url);
-        resolve(null);
-      };
-
-      img.src = url;
-    });
-
-    cache.set(url, promise);
-    return promise;
   }
 
   function preloadDestinationThumbnails(destinations) {

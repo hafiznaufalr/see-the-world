@@ -338,8 +338,8 @@ function generatePhotoUrlsFromDrive(folderName, destinationOrder, options) {
 
   const photos = imageFiles.map(function (file, index) {
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    // Client requests smaller compressed variants (=w…-rw-k-no); store a modest default
-    const url = 'https://lh3.googleusercontent.com/d/' + file.getId() + '=w800-rw-k-no';
+    // Client requests WebP via -rw (JPEG fallback in js/images.js)
+    const url = 'https://lh3.googleusercontent.com/d/' + file.getId() + '=w800-rw-lo-l78-k-no';
     return [destinationOrder, index + 1, url, file.getName(), ''];
   });
 

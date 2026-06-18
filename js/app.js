@@ -43,8 +43,8 @@
     document.documentElement.classList.add('touch-device');
   }
 
-  function resolveImageUrl(src, size) {
-    if (window.imageLoader) return window.imageLoader.resolveImageUrl(src, size);
+  function resolveImageUrl(src, sizeOrProfile, format) {
+    if (window.imageLoader) return window.imageLoader.resolveImageUrl(src, sizeOrProfile, format);
     return src;
   }
 
@@ -132,18 +132,21 @@
 
     img.src = url;
     img.addEventListener('error', () => {
-      if (img.dataset.retried) {
-        img.src = fallbackSrc(fallbackIndex);
+      if (!img.dataset.fallbackStage) {
+        img.dataset.fallbackStage = 'jpeg';
+        img.src = resolveImageUrl(src, size, 'jpeg');
         return;
       }
-      img.dataset.retried = '1';
-      const thumb =
-        window.imageLoader && window.imageLoader.driveThumbnailUrl
-          ? window.imageLoader.driveThumbnailUrl(src, size || 1000)
-          : null;
-      if (thumb) {
-        img.src = thumb;
-        return;
+      if (img.dataset.fallbackStage === 'jpeg') {
+        img.dataset.fallbackStage = 'thumb';
+        const thumb =
+          window.imageLoader && window.imageLoader.driveThumbnailUrl
+            ? window.imageLoader.driveThumbnailUrl(src, size || 1000)
+            : null;
+        if (thumb) {
+          img.src = thumb;
+          return;
+        }
       }
       img.src = fallbackSrc(fallbackIndex);
     });
@@ -504,7 +507,7 @@
     lightboxCaption.textContent = photo.caption || photo.alt;
     lightboxImg.alt = photo.alt;
     lightboxImg.referrerPolicy = 'no-referrer';
-    delete lightboxImg.dataset.retried;
+    delete lightboxImg.dataset.fallbackStage;
 
     lightboxImg.onerror = () => {
       if (lightboxLoadId !== loadId) return;
@@ -516,16 +519,19 @@
       };
       lightboxImg.addEventListener('load', clearOnLoad, { once: true });
 
-      if (lightboxImg.dataset.retried) {
-        lightboxImg.src = fallbackSrc(index);
+      if (!lightboxImg.dataset.fallbackStage) {
+        lightboxImg.dataset.fallbackStage = 'jpeg';
+        lightboxImg.src = resolveImageUrl(photo.src, window.imageLoader ? 'lightbox' : 1280, 'jpeg');
         return;
       }
-      lightboxImg.dataset.retried = '1';
-      const driveIdMatch = photo.src.match(/[?&]id=([\w-]+)/) || photo.src.match(/\/d\/([\w-]+)/);
-      if (driveIdMatch) {
-        const sz = window.imageLoader ? window.imageLoader.lightboxSize() : 1280;
-        lightboxImg.src = 'https://drive.google.com/thumbnail?id=' + driveIdMatch[1] + '&sz=w' + sz;
-        return;
+      if (lightboxImg.dataset.fallbackStage === 'jpeg') {
+        lightboxImg.dataset.fallbackStage = 'thumb';
+        const driveIdMatch = photo.src.match(/[?&]id=([\w-]+)/) || photo.src.match(/\/d\/([\w-]+)/);
+        if (driveIdMatch) {
+          const sz = window.imageLoader ? window.imageLoader.lightboxSize() : 1280;
+          lightboxImg.src = 'https://drive.google.com/thumbnail?id=' + driveIdMatch[1] + '&sz=w' + sz;
+          return;
+        }
       }
       lightboxImg.src = fallbackSrc(index);
     };
