@@ -489,9 +489,41 @@
     galleryModal.showModal();
   }
 
+  const LIGHTBOX_BLANK =
+    'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+
   function setLightboxLoading(loading) {
     lightbox.classList.toggle('lightbox--loading', loading);
     if (lightboxLoader) lightboxLoader.setAttribute('aria-hidden', loading ? 'false' : 'true');
+  }
+
+  function clearLightboxImage() {
+    lightboxImg.classList.add('lightbox-img--hidden');
+    lightboxImg.classList.remove('lightbox-img--preview');
+    lightboxImg.src = LIGHTBOX_BLANK;
+    delete lightboxImg.dataset.fallbackStage;
+  }
+
+  function revealLightboxImage(isPreview) {
+    lightboxImg.classList.remove('lightbox-img--hidden');
+    lightboxImg.classList.toggle('lightbox-img--preview', !!isPreview);
+  }
+
+  function setLightboxImage(url, loadId, index, isPreview, onReady) {
+    if (lightboxLoadId !== loadId || lightboxIndex !== index) return;
+
+    const reveal = () => {
+      if (lightboxLoadId !== loadId || lightboxIndex !== index) return;
+      revealLightboxImage(isPreview);
+      if (onReady) onReady();
+    };
+
+    lightboxImg.onload = reveal;
+    lightboxImg.src = url;
+
+    if (lightboxImg.complete && lightboxImg.naturalWidth > 0) {
+      reveal();
+    }
   }
 
   function openLightbox(index) {
@@ -507,50 +539,56 @@
     lightboxCaption.textContent = photo.caption || photo.alt;
     lightboxImg.alt = photo.alt;
     lightboxImg.referrerPolicy = 'no-referrer';
-    delete lightboxImg.dataset.fallbackStage;
+
+    clearLightboxImage();
+    setLightboxLoading(true);
 
     lightboxImg.onerror = () => {
       if (lightboxLoadId !== loadId) return;
 
-      const clearOnLoad = () => {
-        if (lightboxLoadId !== loadId) return;
-        setLightboxLoading(false);
-        lightboxImg.classList.remove('lightbox-img--preview');
-      };
-      lightboxImg.addEventListener('load', clearOnLoad, { once: true });
-
       if (!lightboxImg.dataset.fallbackStage) {
         lightboxImg.dataset.fallbackStage = 'jpeg';
-        lightboxImg.src = resolveImageUrl(photo.src, window.imageLoader ? 'lightbox' : 1280, 'jpeg');
+        clearLightboxImage();
+        setLightboxImage(
+          resolveImageUrl(photo.src, window.imageLoader ? 'lightbox' : 1280, 'jpeg'),
+          loadId,
+          index,
+          false,
+          () => setLightboxLoading(false)
+        );
         return;
       }
       if (lightboxImg.dataset.fallbackStage === 'jpeg') {
         lightboxImg.dataset.fallbackStage = 'thumb';
+        clearLightboxImage();
         const driveIdMatch = photo.src.match(/[?&]id=([\w-]+)/) || photo.src.match(/\/d\/([\w-]+)/);
         if (driveIdMatch) {
           const sz = window.imageLoader ? window.imageLoader.lightboxSize() : 1280;
-          lightboxImg.src = 'https://drive.google.com/thumbnail?id=' + driveIdMatch[1] + '&sz=w' + sz;
+          setLightboxImage(
+            'https://drive.google.com/thumbnail?id=' + driveIdMatch[1] + '&sz=w' + sz,
+            loadId,
+            index,
+            false,
+            () => setLightboxLoading(false)
+          );
           return;
         }
       }
-      lightboxImg.src = fallbackSrc(index);
+      clearLightboxImage();
+      setLightboxImage(fallbackSrc(index), loadId, index, false, () => setLightboxLoading(false));
+    };
+
+    const showHd = (url) => {
+      if (lightboxLoadId !== loadId || lightboxIndex !== index) return;
+      clearLightboxImage();
+      setLightboxLoading(true);
+      setLightboxImage(url || hdUrl, loadId, index, false, () => setLightboxLoading(false));
     };
 
     if (hdReady) {
-      lightboxImg.src = hdUrl;
-      lightboxImg.classList.remove('lightbox-img--preview');
-      setLightboxLoading(false);
+      setLightboxImage(hdUrl, loadId, index, false, () => setLightboxLoading(false));
     } else {
-      lightboxImg.src = galleryUrl;
-      lightboxImg.classList.add('lightbox-img--preview');
-      setLightboxLoading(true);
-
-      const showHd = (url) => {
-        if (lightboxLoadId !== loadId || lightboxIndex !== index) return;
-        if (url) lightboxImg.src = url;
-        lightboxImg.classList.remove('lightbox-img--preview');
-        setLightboxLoading(false);
-      };
+      setLightboxImage(galleryUrl, loadId, index, true);
 
       if (window.imageLoader) {
         void window.imageLoader.preloadImage(photo.src, 'lightbox').then(showHd);

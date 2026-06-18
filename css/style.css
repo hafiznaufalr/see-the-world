@@ -986,17 +986,18 @@ body {
   max-height: calc(100vh - 6rem);
   object-fit: contain;
   border-radius: 4px;
-  transition: opacity 0.28s ease, filter 0.28s ease;
+  transition: opacity 0.22s ease, filter 0.22s ease, visibility 0.22s ease;
 }
 
-.lightbox-img--preview {
+.lightbox-img--hidden {
+  opacity: 0 !important;
+  visibility: hidden;
+  filter: none !important;
+}
+
+.lightbox-img--preview:not(.lightbox-img--hidden) {
   filter: blur(6px);
   opacity: 0.88;
-}
-
-.lightbox:not(.lightbox--loading) .lightbox-img {
-  filter: none;
-  opacity: 1;
 }
 
 .lightbox-caption {
