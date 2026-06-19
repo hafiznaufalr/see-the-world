@@ -93,12 +93,18 @@ Cloudinary is recommended — no git push needed when adding photos.
 
 ## After your Malaysia trip
 
-1. Upload photos to Cloudinary
+**Using Drive (Apps Script):**
+1. Upload photos to **See The World Photos → 02 - Malaysia**
+2. Run **`unlockMalaysiaChapter`** in Apps Script
+3. Refresh the site
+
+**Using Cloudinary or manual URLs:**
+1. Upload photos to Cloudinary (or Drive, copy URLs)
 2. In **Photos** tab — add rows with `destination_order = 2`
 3. In **Destinations** tab — update row 2:
    - `status` → `unlocked`
-   - `subtitle` → your poetic name (e.g. `The Train Through Towers`)
-4. Refresh the site — done
+   - `subtitle` → e.g. `The Train Through Towers`
+4. Refresh the site
 
 ---
 

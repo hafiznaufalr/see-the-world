@@ -1,6 +1,6 @@
 # See The World Playlist
 
-Hafiz's travel playlist — unlock memories one destination at a time.
+Hafiz's travel playlist — a map drawn from childhood memories of film, the internet, and miniatures.
 
 **Live site:** [https://hafiznaufalr.github.io/see-the-world/](https://hafiznaufalr.github.io/see-the-world/)
 

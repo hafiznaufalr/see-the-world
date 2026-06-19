@@ -73,11 +73,27 @@ See The World Photos/
 - Drag and drop your **JPG** photos
 
 ### 3. Auto-generate URLs for the sheet
-Back in Apps Script:
-- Edit `generatePhotoUrlsFromDrive` if needed (folder name + chapter number)
-- Select **`generatePhotoUrlsFromDrive`** → **Run ▶**
+Back in Apps Script, pick a function from the dropdown and click **Run ▶**:
 
-This writes image URLs into the **Photos** tab automatically.
+| Function | When to use |
+|----------|-------------|
+| `generateSingaporePhotos` | Import from `01 - Singapore` |
+| `generateMalaysiaPhotos` | Import from `02 - Malaysia` |
+| `unlockMalaysiaChapter` | Import Malaysia photos **and** unlock Chapter II in one step |
+| `generatePhotoUrlsFromDrive` | Custom folder — pass params in code or the editor |
+
+**Malaysia (photos already in Drive):**
+1. Upload JPGs to **See The World Photos → 02 - Malaysia**
+2. Run **`unlockMalaysiaChapter`** — done
+
+**Custom chapter:**
+```js
+generatePhotoUrlsFromDrive('02 - Malaysia', 2);
+// or by chapter number:
+generatePhotoUrlsForChapter(2);
+```
+
+This writes image URLs into the **Photos** tab automatically (other chapters' rows are kept).
 
 ### Manual Drive URL (if you prefer)
 For any photo in Drive:
@@ -91,19 +107,22 @@ For any photo in Drive:
 
 ---
 
-## Part 3 — After your Malaysia trip
+## Part 3 — Unlock a new chapter (e.g. Malaysia)
 
-1. Upload photos to **See The World Photos → 02 - Malaysia**
-2. In Apps Script, update `generatePhotoUrlsFromDrive`:
-   ```js
-   const FOLDER_NAME = '02 - Malaysia';
-   const DESTINATION_ORDER = 2;
-   ```
-3. Run **`generatePhotoUrlsFromDrive`**
-4. In **Destinations** tab, row 2:
-   - `status` → `unlocked`
-   - `subtitle` → your name (e.g. `The Train Through Towers`)
-5. Refresh your website
+1. Upload photos to **See The World Photos → 02 - Malaysia** (JPG/PNG only)
+2. In Apps Script, run **`unlockMalaysiaChapter`**
+3. Refresh your website — Chapter II appears on the map
+
+To change the subtitle, edit row 2 in **Destinations** → `subtitle` column, or pass a second arg:
+```js
+unlockDestination(2, 'Your Poetic Name Here');
+```
+
+For future trips, use the same pattern:
+```js
+generatePhotoUrlsFromDrive('03 - Locked', 3);  // when you rename the folder
+unlockDestination(3, 'Chapter subtitle');
+```
 
 ---
 
