@@ -20,11 +20,15 @@ Open [http://localhost:8080](http://localhost:8080)
 
 ## Deploy to GitHub Pages
 
+Deploys via GitHub Actions (`.github/workflows/pages.yml`) on every push to `main`.
+
 1. Create a repo named `see-the-world` on GitHub
 2. Push this project
-3. **Settings → Pages →** branch `main`, folder `/ (root)`
+3. **Settings → Pages → Source:** GitHub Actions (workflow auto-enables this on first run)
 4. Add your Google Sheet ID to `js/config.js` and push **once**
 5. Live at [https://hafiznaufalr.github.io/see-the-world/](https://hafiznaufalr.github.io/see-the-world/)
+
+If the site 404s, Pages was likely disabled. Re-run **Actions → Deploy to GitHub Pages**, or set Source to GitHub Actions again.
 
 ## Project structure
 
