@@ -33,10 +33,9 @@
   let unlockSequenceRunning = false;
   let nodePathLengths = [];
 
-  const UNLOCK_SEEN_KEY = 'stw-last-animated-dest-index';
   const UNLOCK_INITIAL_DELAY_MS = 450;
   const UNLOCK_STAGGER_MS = 550;
-  const UNLOCK_STAGGER_MOBILE_MS = 400;
+  const UNLOCK_STAGGER_MOBILE_MS = 360;
   const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches;
 
   if (isTouchDevice) {
@@ -48,19 +47,12 @@
     return src;
   }
 
-  function getUnlockStaggerMs() {
-    return window.matchMedia('(max-width: 480px)').matches ? UNLOCK_STAGGER_MOBILE_MS : UNLOCK_STAGGER_MS;
-  }
-
-  function getLastAnimatedIndex() {
-    const stored = localStorage.getItem(UNLOCK_SEEN_KEY);
-    if (stored == null || stored === '') return -1;
-    const value = parseInt(stored, 10);
-    return Number.isNaN(value) ? -1 : value;
-  }
-
-  function setLastAnimatedIndex(index) {
-    localStorage.setItem(UNLOCK_SEEN_KEY, String(index));
+  function getUnlockStaggerMs(count) {
+    if (!window.matchMedia('(max-width: 480px)').matches && !isTouchDevice) {
+      return UNLOCK_STAGGER_MS;
+    }
+    // ponytail: shorter gap when many chapters so mobile sequence stays snappy
+    return count > 4 ? 280 : UNLOCK_STAGGER_MOBILE_MS;
   }
 
   function fallbackSrc(index) {
@@ -270,7 +262,7 @@
     return node;
   }
 
-  function applyUnlockedPresentation(node, dest, index, animate) {
+  function applyUnlockedPresentation(node, dest, index, animate, celebrate) {
     node.classList.remove('map-node--locked');
     node.classList.add('map-node--unlocked');
     if (animate) node.classList.add('map-node--unlocking');
@@ -304,7 +296,7 @@
     updateMapPath(index, animate);
 
     if (animate) {
-      if (window.unlockEffects) window.unlockEffects.celebrate(node);
+      if (celebrate && window.unlockEffects) window.unlockEffects.celebrate(node);
 
       node.addEventListener(
         'animationend',
@@ -329,49 +321,20 @@
     }
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const lastAnimated = getLastAnimatedIndex();
-    const instantIndices = unlockedIndices.filter((index) => index <= lastAnimated);
-    let animateIndices = unlockedIndices.filter((index) => index > lastAnimated);
     const maxUnlocked = unlockedIndices[unlockedIndices.length - 1];
 
-    let skipAnimateIndices = [];
-    if (animateIndices.length > 1) {
-      skipAnimateIndices = animateIndices.slice(0, -1);
-      animateIndices = animateIndices.slice(-1);
-    }
-
-    const allInstant = instantIndices.concat(skipAnimateIndices);
-
-    if (prefersReducedMotion || !animateIndices.length) {
+    if (prefersReducedMotion) {
       unlockedIndices.forEach((index) => {
         const node = grid.querySelector(`[data-dest-index="${index}"]`);
-        if (node) applyUnlockedPresentation(node, destinations[index], index, false);
+        if (node) applyUnlockedPresentation(node, destinations[index], index, false, false);
       });
       updateMapPath(maxUnlocked, false);
       updateProgress();
-      if (maxUnlocked > lastAnimated) setLastAnimatedIndex(maxUnlocked);
       return;
     }
 
-    instantIndices.forEach((index) => {
-      const node = grid.querySelector(`[data-dest-index="${index}"]`);
-      if (node) applyUnlockedPresentation(node, destinations[index], index, false);
-    });
-
-    skipAnimateIndices.forEach((index) => {
-      const node = grid.querySelector(`[data-dest-index="${index}"]`);
-      if (node) applyUnlockedPresentation(node, destinations[index], index, false);
-    });
-
-    if (allInstant.length) {
-      updateMapPath(allInstant[allInstant.length - 1], false);
-      updateProgress(allInstant.length);
-    } else {
-      updateProgress(0);
-    }
-
     const thumbSize = window.imageLoader ? 'map' : 200;
-    const preloadTargets = animateIndices
+    const preloadTargets = unlockedIndices
       .map((index) => destinations[index])
       .filter((dest) => dest.gallery && dest.gallery.length > 0);
 
@@ -380,31 +343,35 @@
         Promise.allSettled(
           preloadTargets.map((dest) => window.imageLoader.preloadImage(dest.gallery[0].src, thumbSize))
         ),
-        new Promise((resolve) => setTimeout(resolve, isTouchDevice ? 2200 : 3500)),
+        new Promise((resolve) => setTimeout(resolve, isTouchDevice ? 1600 : 3500)),
       ]);
     }
 
     unlockSequenceRunning = true;
     grid.classList.add('world-map--sequencing');
-    const staggerMs = getUnlockStaggerMs();
-    const initialDelay = isTouchDevice ? 280 : UNLOCK_INITIAL_DELAY_MS;
+    updateProgress(0);
 
-    animateIndices.forEach((destIndex, sequenceIndex) => {
+    const staggerMs = getUnlockStaggerMs(unlockedIndices.length);
+    const initialDelay = isTouchDevice ? 220 : UNLOCK_INITIAL_DELAY_MS;
+    const finishMs = isTouchDevice ? 480 : 650;
+
+    unlockedIndices.forEach((destIndex, sequenceIndex) => {
       const delay = initialDelay + sequenceIndex * staggerMs;
 
       setTimeout(() => {
         const node = grid.querySelector(`[data-dest-index="${destIndex}"]`);
         if (!node) return;
 
-        applyUnlockedPresentation(node, destinations[destIndex], destIndex, true);
-        updateProgress(allInstant.length + sequenceIndex + 1);
+        // Mobile: celebrate only final unlock — keeps confetti/audio off mid-sequence
+        const celebrate = !isTouchDevice || sequenceIndex === unlockedIndices.length - 1;
+        applyUnlockedPresentation(node, destinations[destIndex], destIndex, true, celebrate);
+        updateProgress(sequenceIndex + 1);
 
-        if (sequenceIndex === animateIndices.length - 1) {
+        if (sequenceIndex === unlockedIndices.length - 1) {
           setTimeout(() => {
             unlockSequenceRunning = false;
             grid.classList.remove('world-map--sequencing');
-            setLastAnimatedIndex(maxUnlocked);
-          }, isTouchDevice ? 480 : 650);
+          }, finishMs);
         }
       }, delay);
     });
