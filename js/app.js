@@ -32,6 +32,8 @@
   let lightboxLoadId = 0;
   let unlockSequenceRunning = false;
   let nodePathLengths = [];
+  let pathAnimRaf = null;
+  let pathOffset = null;
 
   const UNLOCK_INITIAL_DELAY_MS = 450;
   const UNLOCK_STAGGER_MS = 550;
@@ -176,28 +178,71 @@
     return svg;
   }
 
-  function updateMapPath(unlockedNodeIndex, animate) {
+  function cancelMapPathAnimation() {
+    if (pathAnimRaf != null) {
+      cancelAnimationFrame(pathAnimRaf);
+      pathAnimRaf = null;
+    }
+  }
+
+  function pathVisibleLength(unlockedNodeIndex) {
+    if (unlockedNodeIndex >= 0 && unlockedNodeIndex < nodePathLengths.length) {
+      return nodePathLengths[unlockedNodeIndex];
+    }
+    return 0;
+  }
+
+  // Soft ease keeps line speed steady in middle, gentle at ends
+  function easePathProgress(t) {
+    return 0.5 - 0.5 * Math.cos(Math.PI * t);
+  }
+
+  function updateMapPath(unlockedNodeIndex, animate, durationMs) {
     const litPath = document.getElementById('map-path-lit');
     if (!litPath || !nodePathLengths.length) return;
 
     const total = litPath.getTotalLength();
-    const visible =
-      unlockedNodeIndex >= 0 && unlockedNodeIndex < nodePathLengths.length
-        ? nodePathLengths[unlockedNodeIndex]
-        : 0;
+    const targetOffset = Math.max(total - pathVisibleLength(unlockedNodeIndex), 0);
 
     litPath.style.strokeDasharray = `${total}`;
-    const duration = isTouchDevice ? '0.45s' : '0.65s';
-    litPath.style.transition = animate
-      ? `stroke-dashoffset ${duration} cubic-bezier(0.22, 1, 0.36, 1)`
-      : 'none';
-    litPath.style.strokeDashoffset = `${Math.max(total - visible, 0)}`;
+    litPath.style.transition = 'none';
+    cancelMapPathAnimation();
+
+    if (!animate) {
+      pathOffset = targetOffset;
+      litPath.style.strokeDashoffset = `${targetOffset}`;
+      return;
+    }
+
+    const fromOffset =
+      pathOffset == null
+        ? parseFloat(litPath.style.strokeDashoffset)
+        : pathOffset;
+    const startOffset = Number.isFinite(fromOffset) ? fromOffset : total;
+    const duration = durationMs != null ? durationMs : isTouchDevice ? 420 : 620;
+    const startedAt = performance.now();
+
+    function frame(now) {
+      const t = Math.min(1, (now - startedAt) / duration);
+      pathOffset = startOffset + (targetOffset - startOffset) * easePathProgress(t);
+      litPath.style.strokeDashoffset = `${pathOffset}`;
+
+      if (t < 1) {
+        pathAnimRaf = requestAnimationFrame(frame);
+      } else {
+        pathAnimRaf = null;
+        pathOffset = targetOffset;
+      }
+    }
+
+    pathAnimRaf = requestAnimationFrame(frame);
   }
 
   function cacheNodePathLengths() {
     const litPath = document.getElementById('map-path-lit');
     if (!litPath) return;
     nodePathLengths = measureAllNodePathLengths(litPath);
+    pathOffset = null;
   }
 
   function bindNodeClick(node, dest) {
@@ -262,7 +307,7 @@
     return node;
   }
 
-  function applyUnlockedPresentation(node, dest, index, animate, celebrate) {
+  function applyUnlockedPresentation(node, dest, index, animate, celebrate, syncPath) {
     node.classList.remove('map-node--locked');
     node.classList.add('map-node--unlocked');
     if (animate) node.classList.add('map-node--unlocking');
@@ -293,7 +338,7 @@
       teaser.textContent = `${photoCount} photos`;
     }
 
-    updateMapPath(index, animate);
+    if (syncPath !== false) updateMapPath(index, animate);
 
     if (animate) {
       if (celebrate && window.unlockEffects) window.unlockEffects.celebrate(node);
@@ -354,6 +399,9 @@
     const staggerMs = getUnlockStaggerMs(unlockedIndices.length);
     const initialDelay = isTouchDevice ? 220 : UNLOCK_INITIAL_DELAY_MS;
     const finishMs = isTouchDevice ? 480 : 650;
+    // One continuous draw — avoids choppy mid-transition restarts per node
+    const pathDuration = initialDelay + Math.max(0, unlockedIndices.length - 1) * staggerMs;
+    updateMapPath(maxUnlocked, true, pathDuration);
 
     unlockedIndices.forEach((destIndex, sequenceIndex) => {
       const delay = initialDelay + sequenceIndex * staggerMs;
@@ -364,7 +412,7 @@
 
         // Mobile: celebrate only final unlock — keeps confetti/audio off mid-sequence
         const celebrate = !isTouchDevice || sequenceIndex === unlockedIndices.length - 1;
-        applyUnlockedPresentation(node, destinations[destIndex], destIndex, true, celebrate);
+        applyUnlockedPresentation(node, destinations[destIndex], destIndex, true, celebrate, false);
         updateProgress(sequenceIndex + 1);
 
         if (sequenceIndex === unlockedIndices.length - 1) {
