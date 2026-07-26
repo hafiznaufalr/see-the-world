@@ -32,21 +32,21 @@
     return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
 
-  function createParticle(x, y) {
-    const angle = (Math.random() * Math.PI * 2);
-    const speed = 2 + Math.random() * 5;
+  function createParticle(x, y, lite) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = lite ? 1.5 + Math.random() * 3 : 2 + Math.random() * 5;
     return {
       x,
       y,
       vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 2,
-      w: 4 + Math.random() * 5,
-      h: 6 + Math.random() * 8,
+      vy: Math.sin(angle) * speed - (lite ? 1.2 : 2),
+      w: lite ? 3 + Math.random() * 3 : 4 + Math.random() * 5,
+      h: lite ? 4 + Math.random() * 5 : 6 + Math.random() * 8,
       rot: Math.random() * Math.PI,
-      spin: (Math.random() - 0.5) * 0.25,
+      spin: (Math.random() - 0.5) * (lite ? 0.14 : 0.25),
       color: COLORS[Math.floor(Math.random() * COLORS.length)],
       life: 1,
-      decay: 0.012 + Math.random() * 0.012,
+      decay: lite ? 0.02 + Math.random() * 0.016 : 0.012 + Math.random() * 0.012,
     };
   }
 
@@ -125,14 +125,15 @@
   function burstConfettiAtElement(el) {
     if (prefersReducedMotion() || !el) return;
 
+    const lite = isLiteEffects();
     ensureCanvas();
     const rect = el.getBoundingClientRect();
     const x = rect.left + Math.min(rect.width * 0.2, 48);
     const y = rect.top + rect.height / 2;
-    const count = isLiteEffects() ? 12 : 36;
+    const count = lite ? 8 : 36;
 
     for (let i = 0; i < count; i += 1) {
-      particles.push(createParticle(x, y));
+      particles.push(createParticle(x, y, lite));
     }
 
     if (!rafId) rafId = requestAnimationFrame(tick);
@@ -141,7 +142,8 @@
   window.unlockEffects = {
     celebrate(cardEl) {
       burstConfettiAtElement(cardEl);
-      playUnlockSound();
+      // Lite/mobile: skip audio — browsers often block it and it costs wakeups
+      if (!isLiteEffects()) playUnlockSound();
     },
   };
 })();
