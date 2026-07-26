@@ -207,6 +207,7 @@ body {
   stroke-width: 1.4;
   opacity: 0.85;
   stroke-dashoffset: 9999;
+  stroke-dasharray: 9999;
 }
 
 .world-map__nodes {
@@ -434,7 +435,10 @@ body {
 
 .touch-device .world-map__path--lit {
   filter: none;
-  transition-timing-function: cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.world-map--sequencing .world-map__path--lit {
+  opacity: 0.95;
 }
 
 .touch-device .map-node--unlocking {
