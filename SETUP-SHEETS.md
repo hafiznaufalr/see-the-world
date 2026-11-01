@@ -56,7 +56,7 @@ The site only reads data. Nobody can edit unless you invite them.
 
 | Column   | Example              | Notes                                      |
 |----------|----------------------|--------------------------------------------|
-| order    | 1                    | Chapter number (1–11)                      |
+| order    | 1                    | Chapter number (1–10)                      |
 | status   | unlocked / locked    | Controls whether gallery is visible        |
 | title    | Chapter I            | Shown in gallery header                    |
 | subtitle | The Garden City      | Shown when unlocked; use `???` if locked   |

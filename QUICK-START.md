@@ -54,7 +54,7 @@ See The World Photos/
   02 - Malaysia/
   03 - Locked/
   ...
-  11 - Locked/
+  10 - Locked/
 ```
 
 ### 2. Upload your photos

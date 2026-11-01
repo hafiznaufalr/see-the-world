@@ -34,6 +34,7 @@
   let nodePathLengths = [];
   let pathAnimRaf = null;
   let pathOffset = null;
+  let mapPositions = [];
 
   const UNLOCK_INITIAL_DELAY_MS = 450;
   const UNLOCK_STAGGER_MS = 550;
@@ -147,7 +148,7 @@
     return img;
   }
 
-  function createMapSvg() {
+  function createMapSvg(pathD) {
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('class', 'world-map__svg');
     svg.setAttribute('viewBox', '0 0 100 100');
@@ -165,12 +166,12 @@
 
     const track = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     track.setAttribute('class', 'world-map__path world-map__path--track');
-    track.setAttribute('d', MAP_PATH_D);
+    track.setAttribute('d', pathD);
     svg.appendChild(track);
 
     const lit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     lit.setAttribute('class', 'world-map__path world-map__path--lit');
-    lit.setAttribute('d', MAP_PATH_D);
+    lit.setAttribute('d', pathD);
     lit.setAttribute('id', 'map-path-lit');
     if (!isTouchDevice) lit.setAttribute('filter', 'url(#path-glow)');
     svg.appendChild(lit);
@@ -241,7 +242,7 @@
   function cacheNodePathLengths() {
     const litPath = document.getElementById('map-path-lit');
     if (!litPath) return;
-    nodePathLengths = measureAllNodePathLengths(litPath);
+    nodePathLengths = measureAllNodePathLengths(litPath, mapPositions);
     pathOffset = null;
   }
 
@@ -262,7 +263,7 @@
   }
 
   function createLockedMapNode(dest, index) {
-    const pos = MAP_NODE_POSITIONS[index] || MAP_NODE_POSITIONS[MAP_NODE_POSITIONS.length - 1];
+    const pos = mapPositions[index] || mapPositions[mapPositions.length - 1] || { x: 50, y: 50 };
     const node = document.createElement('button');
     node.className = 'map-node map-node--locked';
     node.type = 'button';
@@ -430,7 +431,8 @@
     grid.className = 'world-map';
     grid.classList.remove('world-map--sequencing');
 
-    grid.appendChild(createMapSvg());
+    mapPositions = buildNodePositions(destinations.length);
+    grid.appendChild(createMapSvg(buildMapPath(mapPositions)));
 
     const nodesLayer = document.createElement('div');
     nodesLayer.className = 'world-map__nodes';

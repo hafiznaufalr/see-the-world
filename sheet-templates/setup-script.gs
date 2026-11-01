@@ -28,15 +28,14 @@ var DRIVE_ROOT_NAME = 'See The World Photos';
 var CHAPTERS = [
   { order: 1, folder: '01 - Singapore', subtitle: 'The Garden City' },
   { order: 2, folder: '02 - Malaysia', subtitle: 'The Train Through Towers' },
-  { order: 3, folder: '03 - Locked', subtitle: '???' },
+  { order: 3, folder: '03 - Locked', subtitle: 'The Vertical City' },
   { order: 4, folder: '04 - Locked', subtitle: '???' },
   { order: 5, folder: '05 - Locked', subtitle: '???' },
   { order: 6, folder: '06 - Locked', subtitle: '???' },
   { order: 7, folder: '07 - Locked', subtitle: '???' },
   { order: 8, folder: '08 - Locked', subtitle: '???' },
   { order: 9, folder: '09 - Locked', subtitle: '???' },
-  { order: 10, folder: '10 - Locked', subtitle: '???' },
-  { order: 11, folder: '11 - Locked', subtitle: 'Final Chapter' },
+  { order: 10, folder: '10 - Locked', subtitle: 'Final Chapter' },
 ];
 
 /**
@@ -117,14 +116,7 @@ function setupDestinationsTab(ss) {
   const rows = [
     [1, 'unlocked', 'Chapter I', 'The Garden City', '', ''],
     [2, 'unlocked', 'Chapter II', 'The Train Through Towers', '', ''],
-    [
-      3,
-      'locked',
-      'Chapter III',
-      '???',
-      'Fog · Monorail · Fire',
-      "A vertical city wrapped in fog, where the railway disappears into someone's living room and the spice burns twice.",
-    ],
+    [3, 'unlocked', 'Chapter III', 'The Vertical City', '', ''],
     [
       4,
       'locked',
@@ -138,8 +130,8 @@ function setupDestinationsTab(ss) {
       'locked',
       'Chapter V',
       '???',
-      'Road · Fjord · Middle-earth',
-      'Roads that feel borrowed from a fantasy map. Emerald hills, sheep outnumber people, and the ocean carved fjords into the land.',
+      'Skates · Tree · Taxi',
+      'Ice skates carve circles beneath a tower of lights. Yellow cabs honk through winter magic on avenues that never sleep.',
     ],
     [
       6,
@@ -154,35 +146,27 @@ function setupDestinationsTab(ss) {
       'locked',
       'Chapter VII',
       '???',
-      'Skates · Tree · Taxi',
-      'Ice skates carve circles beneath a tower of lights. Yellow cabs honk through winter magic on avenues that never sleep.',
+      'Pilgrimage · Cube · Dawn',
+      'Millions walk the same circle around an ancient cube. The call echoes at dawn across a desert that holds the holiest square on earth.',
     ],
     [
       8,
       'locked',
       'Chapter VIII',
       '???',
-      'Pilgrimage · Cube · Dawn',
-      'Millions walk the same circle around an ancient cube. The call echoes at dawn across a desert that holds the holiest square on earth.',
+      'Dunes · Caravan · Stars',
+      'Golden waves swallow the horizon. Caravans cross dunes that shift every night, and stars feel close enough to touch.',
     ],
     [
       9,
       'locked',
       'Chapter IX',
       '???',
-      'Mirror · Salt · Altitude',
-      'When the rains come, heaven falls to earth. The sky mirrors itself across endless white salt at 3,600 meters above the sea.',
+      'Glacier · Granite · Wind',
+      'Where the Andes finally run out of mountain, granite towers claw at a sky that never stops blowing, and blue glaciers crack and crash into milk-green lakes.',
     ],
     [
       10,
-      'locked',
-      'Chapter X',
-      '???',
-      'Dunes · Caravan · Stars',
-      'Golden waves swallow the horizon. Caravans cross dunes that shift every night, and stars feel close enough to touch.',
-    ],
-    [
-      11,
       'locked',
       'Final Chapter',
       '???',
@@ -260,7 +244,7 @@ function createDriveFolder() {
 }
 
 /**
- * Look up chapter config by order (1–11) or folder name.
+ * Look up chapter config by order (1–10) or folder name.
  */
 function getChapterConfig(orderOrFolder) {
   if (orderOrFolder == null || orderOrFolder === '') return null;
@@ -394,7 +378,7 @@ function generatePhotoUrlsFromDrive(folderName, destinationOrder, options) {
 
 /**
  * Import photos using chapter order (looks up folder from CHAPTERS).
- * @param {number} chapterOrder - 1–11
+ * @param {number} chapterOrder - 1–10
  */
 function generatePhotoUrlsForChapter(chapterOrder) {
   const chapter = getChapterConfig(chapterOrder);
@@ -417,7 +401,7 @@ function generateMalaysiaPhotos() {
 
 /**
  * Unlock a destination row in the Destinations tab.
- * @param {number} order - Chapter order (1–11)
+ * @param {number} order - Chapter order (1–10)
  * @param {string=} subtitle - Shown when unlocked; defaults to CHAPTERS config
  */
 function unlockDestination(order, subtitle) {
