@@ -118,11 +118,24 @@ To change the subtitle, edit row 2 in **Destinations** → `subtitle` column, or
 unlockDestination(2, 'Your Poetic Name Here');
 ```
 
-For future trips, use the same pattern:
+For future **photo** trips, use the same pattern:
 ```js
-generatePhotoUrlsFromDrive('03 - Locked', 3);  // when you rename the folder
+generatePhotoUrlsFromDrive('03 - China', 3);  // or whatever the folder is named
 unlockDestination(3, 'Chapter subtitle');
 ```
+
+For **YouTube-only** chapters (e.g. China — no photo upload):
+1. Update Apps Script with latest `sheet-templates/setup-script.gs` (includes your 3 China links)
+2. Run **`unlockChinaChapter`** from the dropdown — no args needed
+
+Or paste links into Photos `url` (`destination_order = 3`):
+```
+https://youtu.be/7nHkb7oBTOw
+https://youtu.be/b1r2h6w8tTc
+https://youtu.be/cayZ1G_-FAY
+```
+
+`type` = `youtube` optional (auto-detected). Later trips can mix photos and videos in same chapter.
 
 ---
 
@@ -134,6 +147,7 @@ unlockDestination(3, 'Chapter subtitle');
 - [ ] Pushed to GitHub once
 - [ ] (Optional) Created Drive folders (`createDriveFolder`)
 - [ ] (Optional) Uploaded photos and ran `generatePhotoUrlsFromDrive`
+- [ ] (Optional) China: pasted YouTube links or ran `unlockChinaChapter([...])`
 
 ---
 

@@ -69,9 +69,12 @@ The site only reads data. Nobody can edit unless you invite them.
 |-------------------|--------------------------------|--------------------------------------|
 | destination_order | 1                              | Matches `order` in Destinations      |
 | sort_order        | 1                              | Display order within the gallery     |
-| url               | https://res.cloudinary.com/…   | Full image URL (see below)           |
+| url               | https://res.cloudinary.com/…   | Image URL **or** YouTube link        |
 | alt               | Marina Bay at dusk             | Accessibility text                   |
 | caption           | Where the bay meets the sky    | Shown in lightbox                    |
+| type              | photo / youtube                | Optional. Empty → auto-detect from `url` |
+
+Mix photos and YouTube rows in the same chapter, or use only one media type.
 
 ---
 
@@ -105,6 +108,31 @@ Cloudinary is recommended — no git push needed when adding photos.
    - `status` → `unlocked`
    - `subtitle` → e.g. `The Train Through Towers`
 4. Refresh the site
+
+---
+
+## China trip (YouTube embeds — no photo upload)
+
+Paste each YouTube link in the Photos `url` column (`destination_order = 3`). Supports:
+- `https://www.youtube.com/watch?v=…`
+- `https://youtu.be/…`
+- `https://www.youtube.com/shorts/…`
+
+Optional: set `type` to `youtube` (site also auto-detects from the URL).
+
+**Apps Script:** paste latest `setup-script.gs`, then run **`unlockChinaChapter`** (uses these links by default):
+```
+https://youtu.be/7nHkb7oBTOw
+https://youtu.be/b1r2h6w8tTc
+https://youtu.be/cayZ1G_-FAY
+```
+
+Or only write the rows (unlock Destinations yourself):
+```js
+setChapterYouTubeVideos(3, CHINA_YOUTUBE_URLS);
+```
+
+Later chapters: same Photos tab — image URLs for photos, YouTube links for videos, or both.
 
 ---
 

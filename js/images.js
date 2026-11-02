@@ -147,6 +147,8 @@
   }
 
   function preloadImage(src, sizeOrProfile) {
+    if (!src) return Promise.resolve(null);
+
     const webpUrl = resolveImageUrl(src, sizeOrProfile, 'webp');
     const jpegUrl = resolveImageUrl(src, sizeOrProfile, 'jpeg');
 
@@ -175,19 +177,31 @@
     return promise;
   }
 
+  function preloadMediaThumb(item, profile) {
+    if (!item) return Promise.resolve(null);
+    if (typeof isYouTubeMedia === 'function' && isYouTubeMedia(item)) {
+      return loadImageUrl(mediaThumbSrc(item));
+    }
+    return preloadImage(item.src, profile);
+  }
+
   function preloadGalleryImages(photos) {
     return Promise.allSettled(
-      photos.map(function (photo) {
-        return preloadImage(photo.src, 'gallery');
+      (photos || []).map(function (photo) {
+        return preloadMediaThumb(photo, 'gallery');
       })
     );
   }
 
   function preloadLightboxImages(photos) {
     return Promise.allSettled(
-      photos.map(function (photo) {
-        return preloadImage(photo.src, 'lightbox');
-      })
+      (photos || [])
+        .filter(function (item) {
+          return !(typeof isYouTubeMedia === 'function' && isYouTubeMedia(item));
+        })
+        .map(function (photo) {
+          return preloadImage(photo.src, 'lightbox');
+        })
     );
   }
 
@@ -196,7 +210,9 @@
     const tasks = [];
     for (let i = index - radius; i <= index + radius; i += 1) {
       if (i < 0 || i >= photos.length || i === index) continue;
-      tasks.push(preloadImage(photos[i].src, 'lightbox'));
+      const item = photos[i];
+      if (typeof isYouTubeMedia === 'function' && isYouTubeMedia(item)) continue;
+      tasks.push(preloadImage(item.src, 'lightbox'));
     }
     return Promise.allSettled(tasks);
   }
@@ -207,7 +223,7 @@
         return dest.status === 'unlocked' && dest.gallery && dest.gallery.length > 0;
       })
       .map(function (dest) {
-        return preloadImage(dest.gallery[0].src, 'map');
+        return preloadMediaThumb(dest.gallery[0], 'map');
       });
 
     return Promise.allSettled(tasks);
@@ -231,6 +247,7 @@
     isCached: isCached,
     isProfileCached: isProfileCached,
     preloadImage: preloadImage,
+    preloadMediaThumb: preloadMediaThumb,
     preloadGalleryImages: preloadGalleryImages,
     preloadLightboxImages: preloadLightboxImages,
     preloadLightboxNeighbors: preloadLightboxNeighbors,

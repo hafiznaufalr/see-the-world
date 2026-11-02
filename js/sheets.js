@@ -35,14 +35,11 @@ function groupPhotos(photoRows) {
     const destinationOrder = parseInt(row.destination_order, 10);
     if (Number.isNaN(destinationOrder)) return;
 
-    if (!grouped[destinationOrder]) grouped[destinationOrder] = [];
+    const item = buildGalleryItem(row);
+    if (!item) return;
 
-    grouped[destinationOrder].push({
-      src: row.url,
-      alt: row.alt || '',
-      caption: row.caption || '',
-      sort: parseInt(row.sort_order, 10) || 0,
-    });
+    if (!grouped[destinationOrder]) grouped[destinationOrder] = [];
+    grouped[destinationOrder].push(item);
   });
 
   Object.keys(grouped).forEach((key) => {
@@ -61,11 +58,19 @@ function buildDestinations(destinationRows, photoRows) {
       const order = parseInt(row.order, 10);
       const status = (row.status || 'locked').toLowerCase();
       const isUnlocked = status === 'unlocked';
-      const gallery = (photosByDestination[order] || []).map(({ src, alt, caption }) => ({
-        src,
-        alt,
-        caption,
-      }));
+      const gallery = (photosByDestination[order] || []).map((item) => {
+        const media = {
+          src: item.src,
+          alt: item.alt,
+          caption: item.caption,
+          type: item.type || 'photo',
+        };
+        if (item.type === 'youtube') {
+          media.videoId = item.videoId;
+          media.thumb = item.thumb;
+        }
+        return media;
+      });
 
       return {
         id: `chapter-${order}`,
