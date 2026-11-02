@@ -52,6 +52,7 @@ see-the-world/
 | Task | Where |
 |------|-------|
 | Unlock a chapter | Destinations tab → change `status` to `unlocked` |
-| Add photos | Upload to Cloudinary → paste URLs in Photos tab |
+| Add photos | Upload to Cloudinary / Drive → paste URLs in Photos tab |
+| Add YouTube videos | Paste watch / youtu.be / Shorts links in Photos `url` (optional `type=youtube`) |
 | Edit hints / teasers | Destinations tab |
 | Edit captions | Photos tab |

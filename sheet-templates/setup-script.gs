@@ -20,15 +20,26 @@
  *
  * UNLOCK MALAYSIA (photos already in Drive):
  * - Run "unlockMalaysiaChapter" — imports photos + unlocks Chapter II in one step
+ *
+ * CHINA / YOUTUBE VIDEOS (no photo upload):
+ * - Paste watch / youtu.be / Shorts links in Photos `url` column (optional type=youtube)
+ * - Or run unlockChinaChapter() — uses CHINA_YOUTUBE_URLS below
  */
 
 var DRIVE_ROOT_NAME = 'See The World Photos';
+
+/** China Chapter III — YouTube embeds (no Drive photos) */
+var CHINA_YOUTUBE_URLS = [
+  'https://youtu.be/7nHkb7oBTOw',
+  'https://youtu.be/b1r2h6w8tTc',
+  'https://youtu.be/cayZ1G_-FAY',
+];
 
 /** @type {Array<{order:number, folder:string, subtitle:string}>} */
 var CHAPTERS = [
   { order: 1, folder: '01 - Singapore', subtitle: 'The Garden City' },
   { order: 2, folder: '02 - Malaysia', subtitle: 'The Train Through Towers' },
-  { order: 3, folder: '03 - Locked', subtitle: '???' },
+  { order: 3, folder: '03 - China', subtitle: 'China 🇨🇳 (2026)' },
   { order: 4, folder: '04 - Locked', subtitle: '???' },
   { order: 5, folder: '05 - Locked', subtitle: '???' },
   { order: 6, folder: '06 - Locked', subtitle: '???' },
@@ -121,8 +132,8 @@ function setupDestinationsTab(ss) {
       3,
       'locked',
       'Chapter III',
-      '???',
-      'Fog · Monorail · Fire',
+      'China 🇨🇳 (2026)',
+      'Fog · Monorail · Cyberpunk',
       "A vertical city wrapped in fog, where the railway disappears into someone's living room and the spice burns twice.",
     ],
     [
@@ -202,7 +213,8 @@ function setupPhotosTab(ss) {
   if (!sheet) sheet = ss.insertSheet('Photos');
   sheet.clear();
 
-  const headers = ['destination_order', 'sort_order', 'url', 'alt', 'caption'];
+  // type is optional: photo | youtube. Empty / missing → auto-detect from url.
+  const headers = ['destination_order', 'sort_order', 'url', 'alt', 'caption', 'type'];
   const captions = [
     ['Marina Bay skyline at dusk', 'Where the bay meets the sky'],
     ['Gardens by the Bay Supertrees', 'Trees that glow at night'],
@@ -226,7 +238,7 @@ function setupPhotosTab(ss) {
 
   const rows = captions.map(function (item, i) {
     const num = String(i + 1).padStart(2, '0');
-    return [1, i + 1, 'images/singapore/' + num + '.jpg', item[0], item[1]];
+    return [1, i + 1, 'images/singapore/' + num + '.jpg', item[0], item[1], 'photo'];
   });
 
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight('bold');
@@ -336,11 +348,32 @@ function generatePhotoUrlsFromDrive(folderName, destinationOrder, options) {
     return a.getName().localeCompare(b.getName(), undefined, { numeric: true, sensitivity: 'base' });
   });
 
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Photos');
+  if (!sheet) {
+    SpreadsheetApp.getUi().alert('Photos tab not found. Run setupPlaylist first.');
+    return 0;
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const kept = data.length
+    ? [data[0]]
+    : [['destination_order', 'sort_order', 'url', 'alt', 'caption', 'type']];
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) !== String(destinationOrder)) kept.push(data[i]);
+  }
+
+  const hasType = kept[0].map(String).some(function (h) {
+    return String(h).toLowerCase().trim() === 'type';
+  });
+
   const photos = imageFiles.map(function (file, index) {
     file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
     // Client requests WebP via -rw (JPEG fallback in js/images.js)
     const url = 'https://lh3.googleusercontent.com/d/' + file.getId() + '=w800-rw-lo-l78-k-no';
-    return [destinationOrder, index + 1, url, file.getName(), ''];
+    const row = [destinationOrder, index + 1, url, file.getName(), ''];
+    if (hasType) row.push('photo');
+    return row;
   });
 
   if (photos.length === 0) {
@@ -354,23 +387,16 @@ function generatePhotoUrlsFromDrive(folderName, destinationOrder, options) {
     return 0;
   }
 
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Photos');
-  if (!sheet) {
-    SpreadsheetApp.getUi().alert('Photos tab not found. Run setupPlaylist first.');
-    return 0;
-  }
-
-  const data = sheet.getDataRange().getValues();
-  const kept = data.length ? [data[0]] : [['destination_order', 'sort_order', 'url', 'alt', 'caption']];
-  for (var i = 1; i < data.length; i++) {
-    if (String(data[i][0]) !== String(destinationOrder)) kept.push(data[i]);
-  }
-
   const allRows = kept.concat(photos);
+  const width = allRows[0].length;
+  const normalized = allRows.map(function (row) {
+    const copy = row.slice();
+    while (copy.length < width) copy.push('');
+    return copy.slice(0, width);
+  });
 
   sheet.clear();
-  sheet.getRange(1, 1, allRows.length, allRows[0].length).setValues(allRows);
+  sheet.getRange(1, 1, normalized.length, width).setValues(normalized);
   sheet.setFrozenRows(1);
 
   if (!options.silent) {
@@ -489,5 +515,144 @@ function generateAllChapterPhotos() {
     chapters > 0
       ? 'Imported ' + total + ' photo(s) across ' + chapters + ' chapter(s).'
       : 'No photos found in any chapter folder.'
+  );
+}
+
+/**
+ * Replace Photos rows for one chapter with YouTube links (no Drive upload).
+ * Site auto-detects youtube.com / youtu.be / Shorts URLs in the url column.
+ *
+ * @param {number} destinationOrder - Matches Destinations.order
+ * @param {string[]|string} youtubeUrls - Array of links, or newline/comma-separated string
+ * @param {Object=} options
+ * @param {boolean=} options.silent - Skip success alert
+ * @param {string[]=} options.alts - Optional alt text per video
+ * @param {string[]=} options.captions - Optional caption per video
+ * @returns {number} Number of videos written
+ *
+ * Example:
+ *   setChapterYouTubeVideos(3, CHINA_YOUTUBE_URLS);
+ */
+function setChapterYouTubeVideos(destinationOrder, youtubeUrls, options) {
+  options = options || {};
+
+  if (destinationOrder == null || destinationOrder === '' || isNaN(Number(destinationOrder))) {
+    throw new Error('destinationOrder is required, e.g. 3');
+  }
+  destinationOrder = Number(destinationOrder);
+
+  var urls = normalizeYouTubeUrlList(youtubeUrls);
+  if (!urls.length) {
+    SpreadsheetApp.getUi().alert(
+      'No YouTube URLs provided.\n\nExample:\nsetChapterYouTubeVideos(3, ["https://youtu.be/...", "https://youtu.be/..."])'
+    );
+    return 0;
+  }
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Photos');
+  if (!sheet) {
+    SpreadsheetApp.getUi().alert('Photos tab not found. Run setupPlaylist first.');
+    return 0;
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const header = data.length ? data[0] : ['destination_order', 'sort_order', 'url', 'alt', 'caption', 'type'];
+  const hasType = header.map(String).some(function (h) {
+    return String(h).toLowerCase().trim() === 'type';
+  });
+
+  const kept = [header];
+  for (var i = 1; i < data.length; i++) {
+    if (String(data[i][0]) !== String(destinationOrder)) kept.push(data[i]);
+  }
+
+  const alts = options.alts || [];
+  const captions = options.captions || [];
+  const videos = urls.map(function (url, index) {
+    const row = [
+      destinationOrder,
+      index + 1,
+      url,
+      alts[index] || 'YouTube video ' + (index + 1),
+      captions[index] || '',
+    ];
+    if (hasType) row.push('youtube');
+    return row;
+  });
+
+  // Ensure type column exists when writing youtube rows on older sheets
+  if (!hasType) {
+    kept[0] = header.concat(['type']);
+    for (var k = 1; k < kept.length; k++) {
+      while (kept[k].length < kept[0].length - 1) kept[k].push('');
+      kept[k].push('photo');
+    }
+    videos.forEach(function (row) {
+      row.push('youtube');
+    });
+  }
+
+  const allRows = kept.concat(videos);
+  const width = allRows[0].length;
+  const normalized = allRows.map(function (row) {
+    const copy = row.slice();
+    while (copy.length < width) copy.push('');
+    return copy.slice(0, width);
+  });
+
+  sheet.clear();
+  sheet.getRange(1, 1, normalized.length, width).setValues(normalized);
+  sheet.setFrozenRows(1);
+
+  if (!options.silent) {
+    SpreadsheetApp.getUi().alert(
+      'Chapter ' + destinationOrder + ' — wrote ' + videos.length + ' YouTube video link(s).'
+    );
+  }
+
+  Logger.log('setChapterYouTubeVideos: order ' + destinationOrder + ' → ' + videos.length + ' videos');
+  return videos.length;
+}
+
+function normalizeYouTubeUrlList(youtubeUrls) {
+  if (!youtubeUrls) return [];
+  if (Object.prototype.toString.call(youtubeUrls) === '[object Array]') {
+    return youtubeUrls
+      .map(function (u) {
+        return String(u || '').trim();
+      })
+      .filter(Boolean);
+  }
+
+  return String(youtubeUrls)
+    .split(/[\n,]+/)
+    .map(function (u) {
+      return u.trim();
+    })
+    .filter(Boolean);
+}
+
+/**
+ * One-step China unlock with YouTube embeds (no photos).
+ * Run unlockChinaChapter from the Apps Script dropdown (uses CHINA_YOUTUBE_URLS),
+ * or pass custom links: unlockChinaChapter(['https://youtu.be/...']).
+ *
+ * @param {string[]|string=} youtubeUrls - Defaults to CHINA_YOUTUBE_URLS
+ */
+function unlockChinaChapter(youtubeUrls) {
+  const urls = youtubeUrls == null || youtubeUrls === '' ? CHINA_YOUTUBE_URLS : youtubeUrls;
+  const count = setChapterYouTubeVideos(3, urls, { silent: true });
+  if (count === 0) return;
+
+  unlockDestination(3, 'China 🇨🇳 (2026)');
+
+  SpreadsheetApp.getUi().alert(
+    'China chapter is live!\n\n' +
+      '• ' +
+      count +
+      ' YouTube video(s) added to Photos tab\n' +
+      '• Chapter III unlocked in Destinations tab\n\n' +
+      'Refresh your website to see the embeds.'
   );
 }

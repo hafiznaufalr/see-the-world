@@ -13,6 +13,7 @@
 
   const lightbox = document.getElementById('lightbox');
   const lightboxImg = document.getElementById('lightbox-img');
+  const lightboxEmbed = document.getElementById('lightbox-embed');
   const lightboxLoader = document.getElementById('lightbox-loader');
   const lightboxCaption = document.getElementById('lightbox-caption');
   const lightboxClose = document.getElementById('lightbox-close');
@@ -319,11 +320,16 @@
       inner.innerHTML = '';
       if (dest.gallery && dest.gallery.length > 0) {
         const thumbSize = window.imageLoader ? 'map' : 200;
+        const cover = dest.gallery[0];
         inner.appendChild(
-          createImageWithFallback(dest.gallery[0].src, dest.gallery[0].alt, index, thumbSize, {
+          createImageWithFallback(mediaThumbSrc(cover), cover.alt, index, thumbSize, {
             priority: animate,
           })
         );
+        if (isYouTubeMedia(cover)) {
+          inner.classList.add('map-node__inner--video');
+          inner.appendChild(icon('play', 'map-node__play'));
+        }
       } else {
         inner.appendChild(icon('map'));
       }
@@ -334,8 +340,7 @@
 
     const teaser = node.querySelector('.map-node__teaser');
     if (teaser) {
-      const photoCount = dest.gallery ? dest.gallery.length : 0;
-      teaser.textContent = `${photoCount} photos`;
+      teaser.textContent = galleryCountLabel(dest.gallery);
     }
 
     if (syncPath !== false) updateMapPath(index, animate);
@@ -386,7 +391,7 @@
     if (window.imageLoader && preloadTargets.length) {
       await Promise.race([
         Promise.allSettled(
-          preloadTargets.map((dest) => window.imageLoader.preloadImage(dest.gallery[0].src, thumbSize))
+          preloadTargets.map((dest) => window.imageLoader.preloadMediaThumb(dest.gallery[0], thumbSize))
         ),
         new Promise((resolve) => setTimeout(resolve, isTouchDevice ? 1600 : 3500)),
       ]);
@@ -475,15 +480,19 @@
 
     currentGallery.forEach((photo, i) => {
       const item = document.createElement('button');
-      item.className = 'gallery-item';
+      item.className = 'gallery-item' + (isYouTubeMedia(photo) ? ' gallery-item--video' : '');
       item.type = 'button';
       item.setAttribute('aria-label', photo.caption || photo.alt);
 
       const gallerySize = window.imageLoader ? 'gallery' : 600;
-      const img = createImageWithFallback(photo.src, photo.alt, i, gallerySize, {
+      const img = createImageWithFallback(mediaThumbSrc(photo), photo.alt, i, gallerySize, {
         priority: i < 6,
       });
       item.appendChild(img);
+
+      if (isYouTubeMedia(photo)) {
+        item.appendChild(icon('play', 'gallery-item-play'));
+      }
 
       if (photo.caption) {
         const cap = document.createElement('span');
@@ -492,10 +501,12 @@
         item.appendChild(cap);
       }
 
-      const warmLightbox = () => prefetchLightboxPhoto(photo, true);
-      item.addEventListener('pointerenter', warmLightbox, { passive: true });
-      item.addEventListener('focus', warmLightbox, { passive: true });
-      item.addEventListener('touchstart', warmLightbox, { passive: true });
+      if (!isYouTubeMedia(photo)) {
+        const warmLightbox = () => prefetchLightboxPhoto(photo, true);
+        item.addEventListener('pointerenter', warmLightbox, { passive: true });
+        item.addEventListener('focus', warmLightbox, { passive: true });
+        item.addEventListener('touchstart', warmLightbox, { passive: true });
+      }
 
       item.addEventListener('click', () => openLightbox(i));
       galleryGrid.appendChild(item);
@@ -512,11 +523,28 @@
     if (lightboxLoader) lightboxLoader.setAttribute('aria-hidden', loading ? 'false' : 'true');
   }
 
+  function clearLightboxEmbed() {
+    if (!lightboxEmbed) return;
+    lightboxEmbed.hidden = true;
+    lightboxEmbed.removeAttribute('src');
+    lightbox.classList.remove('lightbox--video');
+  }
+
   function clearLightboxImage() {
     lightboxImg.classList.add('lightbox-img--hidden');
     lightboxImg.classList.remove('lightbox-img--preview');
     lightboxImg.src = LIGHTBOX_BLANK;
     delete lightboxImg.dataset.fallbackStage;
+  }
+
+  function showLightboxEmbed(videoId, title) {
+    if (!lightboxEmbed) return;
+    clearLightboxImage();
+    setLightboxLoading(false);
+    lightbox.classList.add('lightbox--video');
+    lightboxEmbed.title = title || 'YouTube video';
+    lightboxEmbed.src = youtubeEmbedUrl(videoId);
+    lightboxEmbed.hidden = false;
   }
 
   function revealLightboxImage(isPreview) {
@@ -547,11 +575,20 @@
     const photo = currentGallery[index];
     if (!photo) return;
 
+    lightboxCaption.textContent = photo.caption || photo.alt;
+
+    if (isYouTubeMedia(photo)) {
+      showLightboxEmbed(photo.videoId, photo.caption || photo.alt);
+      if (!lightbox.open) lightbox.showModal();
+      return;
+    }
+
+    clearLightboxEmbed();
+
     const galleryUrl = resolveImageUrl(photo.src, window.imageLoader ? 'gallery' : 600);
     const hdUrl = resolveImageUrl(photo.src, window.imageLoader ? 'lightbox' : 1280);
     const hdReady = window.imageLoader && window.imageLoader.isProfileCached(photo.src, 'lightbox');
 
-    lightboxCaption.textContent = photo.caption || photo.alt;
     lightboxImg.alt = photo.alt;
     lightboxImg.referrerPolicy = 'no-referrer';
 
@@ -649,6 +686,11 @@
   lightbox.addEventListener('click', (e) => {
     if (e.target === lightbox) lightbox.close();
   });
+  lightbox.addEventListener('close', () => {
+    clearLightboxEmbed();
+    clearLightboxImage();
+    setLightboxLoading(false);
+  });
 
   lockedClose.addEventListener('click', () => lockedModal.close());
   lockedModal.addEventListener('click', (e) => {
@@ -694,9 +736,10 @@
         })
         .forEach(function (dest) {
           dest.gallery.slice(0, 6).forEach(function (photo) {
-            void window.imageLoader.preloadImage(photo.src, 'gallery');
+            void window.imageLoader.preloadMediaThumb(photo, 'gallery');
           });
           dest.gallery.slice(0, 3).forEach(function (photo) {
+            if (isYouTubeMedia(photo)) return;
             void window.imageLoader.preloadImage(photo.src, 'lightbox');
           });
         });

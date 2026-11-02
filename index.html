@@ -3,11 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="description" content="See The World Playlist — a map based on Hafiz's childhood memories from film, internet, and miniatures.">
   <title>See The World Playlist</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://lh3.googleusercontent.com" crossorigin>
+  <link rel="preconnect" href="https://i.ytimg.com" crossorigin>
   <link rel="preconnect" href="https://docs.google.com">
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
@@ -52,17 +54,26 @@
   </dialog>
 
   <!-- Lightbox -->
-  <dialog class="lightbox" id="lightbox" aria-label="Photo viewer">
+  <dialog class="lightbox" id="lightbox" aria-label="Media viewer">
     <button class="lightbox-close" id="lightbox-close" aria-label="Close"></button>
-    <button class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="Previous photo"></button>
+    <button class="lightbox-nav lightbox-prev" id="lightbox-prev" aria-label="Previous"></button>
     <figure class="lightbox-figure">
       <div class="lightbox-stage">
         <div class="lightbox-loader" id="lightbox-loader" aria-hidden="true"></div>
         <img class="lightbox-img" id="lightbox-img" src="" alt="">
+        <iframe
+          class="lightbox-embed"
+          id="lightbox-embed"
+          title="YouTube video"
+          referrerpolicy="strict-origin-when-cross-origin"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+          allowfullscreen
+          hidden
+        ></iframe>
       </div>
       <figcaption class="lightbox-caption" id="lightbox-caption"></figcaption>
     </figure>
-    <button class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="Next photo"></button>
+    <button class="lightbox-nav lightbox-next" id="lightbox-next" aria-label="Next"></button>
   </dialog>
 
   <!-- Locked Detail Modal -->
@@ -78,6 +89,7 @@
   </dialog>
 
   <script src="js/icons.js"></script>
+  <script src="js/media.js"></script>
   <script src="js/images.js"></script>
   <script src="js/effects.js"></script>
   <script src="js/data.js"></script>
