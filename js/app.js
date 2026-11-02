@@ -337,10 +337,6 @@
             priority: animate,
           })
         );
-        if (destinationHasVideos(dest)) {
-          inner.classList.add('map-node__inner--video');
-          inner.appendChild(icon('play', 'map-node__play'));
-        }
       } else {
         inner.appendChild(icon('map'));
       }
