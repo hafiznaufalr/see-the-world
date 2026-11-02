@@ -72,6 +72,8 @@ function buildDestinations(destinationRows, photoRows) {
         return media;
       });
 
+      const thumbnail = (row.thumbnail || row.cover || '').trim();
+
       return {
         id: `chapter-${order}`,
         status: isUnlocked ? 'unlocked' : 'locked',
@@ -79,6 +81,7 @@ function buildDestinations(destinationRows, photoRows) {
         subtitle: row.subtitle || '???',
         teaser: row.teaser || '',
         hint: row.hint || '',
+        thumbnail: thumbnail || null,
         gallery: isUnlocked ? gallery : null,
       };
     });

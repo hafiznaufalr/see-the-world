@@ -94,3 +94,19 @@ function galleryCountLabel(gallery) {
   if (photos && !videos) return photos === 1 ? '1 photo' : photos + ' photos';
   return gallery.length + ' moments';
 }
+
+/** Map-node cover: Destinations.thumbnail if set, else first gallery thumb. */
+function destinationCoverSrc(dest) {
+  if (!dest) return '';
+  if (dest.thumbnail) return dest.thumbnail;
+  if (dest.gallery && dest.gallery.length) return mediaThumbSrc(dest.gallery[0]);
+  return '';
+}
+
+function destinationHasVideos(dest) {
+  if (!dest || !dest.gallery || !dest.gallery.length) return false;
+  for (let i = 0; i < dest.gallery.length; i += 1) {
+    if (isYouTubeMedia(dest.gallery[i])) return true;
+  }
+  return false;
+}

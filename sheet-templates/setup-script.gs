@@ -124,10 +124,11 @@ function setupDestinationsTab(ss) {
   }
   sheet.clear();
 
-  const headers = ['order', 'status', 'title', 'subtitle', 'teaser', 'hint'];
+  // thumbnail = optional map-node cover URL (Drive/Cloudinary/etc). Empty → first gallery item.
+  const headers = ['order', 'status', 'title', 'subtitle', 'teaser', 'hint', 'thumbnail'];
   const rows = [
-    [1, 'unlocked', 'Chapter I', 'The Garden City', '', ''],
-    [2, 'unlocked', 'Chapter II', 'The Train Through Towers', '', ''],
+    [1, 'unlocked', 'Chapter I', 'The Garden City', '', '', ''],
+    [2, 'unlocked', 'Chapter II', 'The Train Through Towers', '', '', ''],
     [
       3,
       'locked',
@@ -135,6 +136,7 @@ function setupDestinationsTab(ss) {
       'China 🇨🇳 (2026)',
       'Fog · Monorail · Cyberpunk',
       "A vertical city wrapped in fog, where the railway disappears into someone's living room and the spice burns twice.",
+      '',
     ],
     [
       4,
@@ -143,6 +145,7 @@ function setupDestinationsTab(ss) {
       '???',
       'Powder · Onsen · Silence',
       'Powder dreams beneath sacred peaks. After the descent, steam rises from cedar baths while snow falls without sound.',
+      '',
     ],
     [
       5,
@@ -151,6 +154,7 @@ function setupDestinationsTab(ss) {
       '???',
       'Road · Fjord · Middle-earth',
       'Roads that feel borrowed from a fantasy map. Emerald hills, sheep outnumber people, and the ocean carved fjords into the land.',
+      '',
     ],
     [
       6,
@@ -159,6 +163,7 @@ function setupDestinationsTab(ss) {
       '???',
       'Aurora · Fjord · Midnight',
       "When green fire dances across a black sky and the sun refuses to set, you'll understand why Vikings looked up and believed.",
+      '',
     ],
     [
       7,
@@ -167,6 +172,7 @@ function setupDestinationsTab(ss) {
       '???',
       'Skates · Tree · Taxi',
       'Ice skates carve circles beneath a tower of lights. Yellow cabs honk through winter magic on avenues that never sleep.',
+      '',
     ],
     [
       8,
@@ -175,6 +181,7 @@ function setupDestinationsTab(ss) {
       '???',
       'Pilgrimage · Cube · Dawn',
       'Millions walk the same circle around an ancient cube. The call echoes at dawn across a desert that holds the holiest square on earth.',
+      '',
     ],
     [
       9,
@@ -183,6 +190,7 @@ function setupDestinationsTab(ss) {
       '???',
       'Mirror · Salt · Altitude',
       'When the rains come, heaven falls to earth. The sky mirrors itself across endless white salt at 3,600 meters above the sea.',
+      '',
     ],
     [
       10,
@@ -191,6 +199,7 @@ function setupDestinationsTab(ss) {
       '???',
       'Dunes · Caravan · Stars',
       'Golden waves swallow the horizon. Caravans cross dunes that shift every night, and stars feel close enough to touch.',
+      '',
     ],
     [
       11,
@@ -199,6 +208,7 @@ function setupDestinationsTab(ss) {
       '???',
       'Penguin · Ice · End of Map',
       'At the end of all maps, penguins march in formation and icebergs calve with a sound like thunder. No flag claims this place.',
+      '',
     ],
   ];
 
