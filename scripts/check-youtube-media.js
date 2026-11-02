@@ -20,6 +20,8 @@ const {
   galleryCountLabel,
   isYouTubeMedia,
   mediaThumbSrc,
+  destinationCoverSrc,
+  destinationHasVideos,
 } = sandbox;
 
 assert(extractYouTubeVideoId('https://www.youtube.com/watch?v=dQw4w9WgXcQ') === 'dQw4w9WgXcQ', 'watch');
@@ -58,5 +60,17 @@ const forcedBad = buildGalleryItem({
   type: 'youtube',
 });
 assert(forcedBad === null, 'bad youtube skipped');
+
+assert(
+  destinationCoverSrc({ thumbnail: 'https://example.com/cover.jpg', gallery: [video] }) ===
+    'https://example.com/cover.jpg',
+  'custom thumbnail wins'
+);
+assert(
+  destinationCoverSrc({ gallery: [video] }) === youtubeThumbnailUrl('dQw4w9WgXcQ'),
+  'fallback youtube thumb'
+);
+assert(destinationHasVideos({ gallery: [video, photo] }), 'has videos');
+assert(!destinationHasVideos({ gallery: [photo] }), 'photos only');
 
 console.log('youtube media check ok');

@@ -185,6 +185,17 @@
     return preloadImage(item.src, profile);
   }
 
+  function preloadCover(dest, profile) {
+    if (!dest) return Promise.resolve(null);
+    const cover = typeof destinationCoverSrc === 'function' ? destinationCoverSrc(dest) : '';
+    if (!cover) return Promise.resolve(null);
+    // Custom Destinations.thumbnail / YouTube CDN thumbs are plain URLs
+    if (dest.thumbnail || (dest.gallery && dest.gallery[0] && isYouTubeMedia(dest.gallery[0]))) {
+      return loadImageUrl(cover);
+    }
+    return preloadImage(cover, profile);
+  }
+
   function preloadGalleryImages(photos) {
     return Promise.allSettled(
       (photos || []).map(function (photo) {
@@ -220,10 +231,10 @@
   function preloadDestinationThumbnails(destinations) {
     const tasks = destinations
       .filter(function (dest) {
-        return dest.status === 'unlocked' && dest.gallery && dest.gallery.length > 0;
+        return dest.status === 'unlocked' && destinationCoverSrc(dest);
       })
       .map(function (dest) {
-        return preloadMediaThumb(dest.gallery[0], 'map');
+        return preloadCover(dest, 'map');
       });
 
     return Promise.allSettled(tasks);
@@ -248,6 +259,7 @@
     isProfileCached: isProfileCached,
     preloadImage: preloadImage,
     preloadMediaThumb: preloadMediaThumb,
+    preloadCover: preloadCover,
     preloadGalleryImages: preloadGalleryImages,
     preloadLightboxImages: preloadLightboxImages,
     preloadLightboxNeighbors: preloadLightboxNeighbors,

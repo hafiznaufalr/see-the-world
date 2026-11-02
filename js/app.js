@@ -318,15 +318,17 @@
     if (inner) {
       inner.classList.remove('map-node__inner--locked');
       inner.innerHTML = '';
-      if (dest.gallery && dest.gallery.length > 0) {
+      const coverSrc = destinationCoverSrc(dest);
+      if (coverSrc) {
         const thumbSize = window.imageLoader ? 'map' : 200;
-        const cover = dest.gallery[0];
+        const coverAlt =
+          (dest.gallery && dest.gallery[0] && dest.gallery[0].alt) || dest.subtitle || '';
         inner.appendChild(
-          createImageWithFallback(mediaThumbSrc(cover), cover.alt, index, thumbSize, {
+          createImageWithFallback(coverSrc, coverAlt, index, thumbSize, {
             priority: animate,
           })
         );
-        if (isYouTubeMedia(cover)) {
+        if (destinationHasVideos(dest)) {
           inner.classList.add('map-node__inner--video');
           inner.appendChild(icon('play', 'map-node__play'));
         }
@@ -386,12 +388,12 @@
     const thumbSize = window.imageLoader ? 'map' : 200;
     const preloadTargets = unlockedIndices
       .map((index) => destinations[index])
-      .filter((dest) => dest.gallery && dest.gallery.length > 0);
+      .filter((dest) => destinationCoverSrc(dest));
 
     if (window.imageLoader && preloadTargets.length) {
       await Promise.race([
         Promise.allSettled(
-          preloadTargets.map((dest) => window.imageLoader.preloadMediaThumb(dest.gallery[0], thumbSize))
+          preloadTargets.map((dest) => window.imageLoader.preloadCover(dest, thumbSize))
         ),
         new Promise((resolve) => setTimeout(resolve, isTouchDevice ? 1600 : 3500)),
       ]);

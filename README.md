@@ -54,5 +54,6 @@ see-the-world/
 | Unlock a chapter | Destinations tab → change `status` to `unlocked` |
 | Add photos | Upload to Cloudinary / Drive → paste URLs in Photos tab |
 | Add YouTube videos | Paste watch / youtu.be / Shorts links in Photos `url` (optional `type=youtube`) |
+| Custom map thumbnail | Destinations tab → `thumbnail` column (image URL) |
 | Edit hints / teasers | Destinations tab |
 | Edit captions | Photos tab |

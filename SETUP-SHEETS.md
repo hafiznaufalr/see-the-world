@@ -54,14 +54,17 @@ The site only reads data. Nobody can edit unless you invite them.
 
 ### Destinations tab
 
-| Column   | Example              | Notes                                      |
-|----------|----------------------|--------------------------------------------|
-| order    | 1                    | Chapter number (1–11)                      |
-| status   | unlocked / locked    | Controls whether gallery is visible        |
-| title    | Chapter I            | Shown in gallery header                    |
-| subtitle | The Garden City      | Shown when unlocked; use `???` if locked   |
-| teaser   | Train · Coffee · Caves | Short tags shown on locked cards         |
-| hint     | Where trains pierce… | Full hint shown when clicking a locked card |
+| Column    | Example              | Notes                                      |
+|-----------|----------------------|--------------------------------------------|
+| order     | 1                    | Chapter number (1–11)                      |
+| status    | unlocked / locked    | Controls whether gallery is visible        |
+| title     | Chapter I            | Shown in gallery header                    |
+| subtitle  | The Garden City      | Shown when unlocked; use `???` if locked   |
+| teaser    | Train · Coffee · Caves | Short tags shown on locked cards         |
+| hint      | Where trains pierce… | Full hint shown when clicking a locked card |
+| thumbnail | https://lh3.googleusercontent.com/d/… | Optional map-node cover. Empty → first gallery photo/video thumb |
+
+Add a `thumbnail` column header on your existing Destinations tab (column G). Paste any public image URL — same style as Photos.
 
 ### Photos tab
 

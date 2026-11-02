@@ -137,6 +137,8 @@ https://youtu.be/cayZ1G_-FAY
 
 `type` = `youtube` optional (auto-detected). Later trips can mix photos and videos in same chapter.
 
+**Custom map thumbnail (front page circle):** in Destinations, add/use column `thumbnail` and paste an image URL (Drive/Cloudinary). Empty = first gallery item (YouTube thumb for video chapters).
+
 ---
 
 ## Checklist
