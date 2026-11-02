@@ -1,16 +1,32 @@
-const MAP_NODE_POSITIONS = [
-  { x: 22, y: 9 },
-  { x: 78, y: 17 },
-  { x: 22, y: 25 },
-  { x: 78, y: 33 },
-  { x: 22, y: 41 },
-  { x: 78, y: 49 },
-  { x: 22, y: 57 },
-  { x: 78, y: 65 },
-  { x: 22, y: 73 },
-  { x: 78, y: 81 },
-  { x: 50, y: 89 },
-];
+const MAP_LAYOUT = {
+  top: 9,
+  bottom: 89,
+  leftX: 22,
+  rightX: 78,
+  centerX: 50,
+};
+
+/**
+ * Build zigzag node positions for N destinations.
+ * Last node is always centered (finale). Path length follows count — no dangling tail.
+ */
+function buildMapNodePositions(count) {
+  count = Math.max(0, Number(count) || 0);
+  if (!count) return [];
+
+  const positions = [];
+  for (let i = 0; i < count; i += 1) {
+    const y =
+      count === 1
+        ? (MAP_LAYOUT.top + MAP_LAYOUT.bottom) / 2
+        : MAP_LAYOUT.top + ((MAP_LAYOUT.bottom - MAP_LAYOUT.top) * i) / (count - 1);
+    const isLast = i === count - 1;
+    const x = isLast ? MAP_LAYOUT.centerX : i % 2 === 0 ? MAP_LAYOUT.leftX : MAP_LAYOUT.rightX;
+    positions.push({ x: x, y: y });
+  }
+
+  return positions;
+}
 
 function buildMapPath(points) {
   if (!points.length) return '';
@@ -26,12 +42,10 @@ function buildMapPath(points) {
   return d;
 }
 
-const MAP_PATH_D = buildMapPath(MAP_NODE_POSITIONS);
-
-function measurePathLengthAtNode(pathEl, nodeIndex) {
+function measurePathLengthAtNode(pathEl, nodeIndex, positions) {
   if (nodeIndex < 0) return 0;
 
-  const target = MAP_NODE_POSITIONS[nodeIndex];
+  const target = positions[nodeIndex];
   if (!target || !pathEl) return 0;
 
   const total = pathEl.getTotalLength();
@@ -51,6 +65,10 @@ function measurePathLengthAtNode(pathEl, nodeIndex) {
   return bestLen;
 }
 
-function measureAllNodePathLengths(pathEl) {
-  return MAP_NODE_POSITIONS.map((_, index) => measurePathLengthAtNode(pathEl, index));
+function measureAllNodePathLengths(pathEl, positions) {
+  return positions.map((_, index) => measurePathLengthAtNode(pathEl, index, positions));
 }
+
+// Back-compat for any callers expecting the old 11-stop layout constants
+const MAP_NODE_POSITIONS = buildMapNodePositions(11);
+const MAP_PATH_D = buildMapPath(MAP_NODE_POSITIONS);

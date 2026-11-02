@@ -32,9 +32,16 @@
   let lightboxIndex = 0;
   let lightboxLoadId = 0;
   let unlockSequenceRunning = false;
+  let mapNodePositions = MAP_NODE_POSITIONS.slice();
+  let mapPathD = MAP_PATH_D;
   let nodePathLengths = [];
   let pathAnimRaf = null;
   let pathOffset = null;
+
+  function syncMapLayout(count) {
+    mapNodePositions = buildMapNodePositions(count);
+    mapPathD = buildMapPath(mapNodePositions);
+  }
 
   const UNLOCK_INITIAL_DELAY_MS = 450;
   const UNLOCK_STAGGER_MS = 550;
@@ -166,12 +173,12 @@
 
     const track = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     track.setAttribute('class', 'world-map__path world-map__path--track');
-    track.setAttribute('d', MAP_PATH_D);
+    track.setAttribute('d', mapPathD);
     svg.appendChild(track);
 
     const lit = document.createElementNS('http://www.w3.org/2000/svg', 'path');
     lit.setAttribute('class', 'world-map__path world-map__path--lit');
-    lit.setAttribute('d', MAP_PATH_D);
+    lit.setAttribute('d', mapPathD);
     lit.setAttribute('id', 'map-path-lit');
     if (!isTouchDevice) lit.setAttribute('filter', 'url(#path-glow)');
     svg.appendChild(lit);
@@ -242,7 +249,7 @@
   function cacheNodePathLengths() {
     const litPath = document.getElementById('map-path-lit');
     if (!litPath) return;
-    nodePathLengths = measureAllNodePathLengths(litPath);
+    nodePathLengths = measureAllNodePathLengths(litPath, mapNodePositions);
     pathOffset = null;
   }
 
@@ -263,7 +270,8 @@
   }
 
   function createLockedMapNode(dest, index) {
-    const pos = MAP_NODE_POSITIONS[index] || MAP_NODE_POSITIONS[MAP_NODE_POSITIONS.length - 1];
+    const pos =
+      mapNodePositions[index] || mapNodePositions[mapNodePositions.length - 1] || { x: 50, y: 50 };
     const node = document.createElement('button');
     node.className = 'map-node map-node--locked';
     node.type = 'button';
@@ -272,7 +280,8 @@
     node.style.top = `${pos.y}%`;
     node.style.zIndex = String(20 + index);
     if (pos.x < 50) node.classList.add('map-node--left');
-    else node.classList.add('map-node--right');
+    else if (pos.x > 50) node.classList.add('map-node--right');
+    else node.classList.add('map-node--center');
     node.setAttribute('aria-label', `Locked destination ${dest.title}`);
 
     const ring = document.createElement('span');
@@ -433,9 +442,14 @@
   }
 
   function renderCards() {
+    syncMapLayout(destinations.length);
+
     grid.innerHTML = '';
     grid.className = 'world-map';
     grid.classList.remove('world-map--sequencing');
+    // ponytail: scale map height with chapter count so fewer stops don't leave empty tail space
+    const mapHeight = Math.max(640, 120 + destinations.length * 82);
+    grid.style.setProperty('--map-min-height', mapHeight + 'px');
 
     grid.appendChild(createMapSvg());
 

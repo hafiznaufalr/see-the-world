@@ -160,7 +160,7 @@ body {
 /* World map — game level select */
 .world-map {
   position: relative;
-  min-height: 940px;
+  min-height: var(--map-min-height, 940px);
   padding: 1.35rem 1.25rem 2.75rem;
   border-radius: calc(var(--radius) + 4px);
   background:
@@ -213,7 +213,7 @@ body {
 .world-map__nodes {
   position: relative;
   z-index: 1;
-  min-height: 940px;
+  min-height: var(--map-min-height, 940px);
 }
 
 .world-map--sequencing .map-node--locked {
@@ -298,6 +298,17 @@ body {
   text-align: right;
   padding-right: 0.35rem;
   padding-left: 0.75rem;
+}
+
+.map-node--center {
+  align-items: center;
+}
+
+.map-node--center .map-node__label {
+  align-items: center;
+  text-align: center;
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
 }
 
 .map-node__inner {
@@ -479,7 +490,7 @@ body {
 
   .world-map,
   .world-map__nodes {
-    min-height: 820px;
+    min-height: var(--map-min-height, 820px);
   }
 
   .map-node {
