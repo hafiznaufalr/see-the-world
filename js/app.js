@@ -269,6 +269,49 @@
     });
   }
 
+  function createCloudLayer() {
+    const wrap = document.createElement('span');
+    wrap.className = 'map-node__clouds';
+    wrap.setAttribute('aria-hidden', 'true');
+    // ponytail: 3 puffs + haze — enough cover without per-node canvas
+    ['haze', 'a', 'b', 'c'].forEach((name) => {
+      const puff = document.createElement('span');
+      puff.className = `cloud cloud--${name}`;
+      wrap.appendChild(puff);
+    });
+    return wrap;
+  }
+
+  function clearNodeClouds(node, animate) {
+    const clouds = node.querySelector('.map-node__clouds');
+    if (!clouds) {
+      node.classList.remove('map-node--clearing');
+      return;
+    }
+
+    if (!animate) {
+      clouds.remove();
+      node.classList.remove('map-node--clearing');
+      return;
+    }
+
+    node.classList.add('map-node--clearing');
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clouds.remove();
+      node.classList.remove('map-node--clearing');
+    };
+
+    clouds.addEventListener('animationend', (event) => {
+      if (event.target !== clouds) return;
+      finish();
+    });
+    // fallback if animationend skipped (display:none / reduced-motion race)
+    setTimeout(finish, 950);
+  }
+
   function createLockedMapNode(dest, index) {
     const pos =
       mapNodePositions[index] || mapNodePositions[mapNodePositions.length - 1] || { x: 50, y: 50 };
@@ -312,12 +355,14 @@
     label.appendChild(teaser);
 
     node.appendChild(label);
+    node.appendChild(createCloudLayer());
 
     bindNodeClick(node, dest);
     return node;
   }
 
   function applyUnlockedPresentation(node, dest, index, animate, celebrate, syncPath) {
+    clearNodeClouds(node, animate);
     node.classList.remove('map-node--locked');
     node.classList.add('map-node--unlocked');
     if (animate) node.classList.add('map-node--unlocking');
@@ -355,13 +400,13 @@
     if (animate) {
       if (celebrate && window.unlockEffects) window.unlockEffects.celebrate(node);
 
-      node.addEventListener(
-        'animationend',
-        () => {
-          node.classList.remove('map-node--unlocking');
-        },
-        { once: true }
-      );
+      // Ignore bubbled cloud/ring animationend — only the node unlock keyframe
+      const onUnlockAnimEnd = (event) => {
+        if (event.target !== node) return;
+        node.removeEventListener('animationend', onUnlockAnimEnd);
+        node.classList.remove('map-node--unlocking');
+      };
+      node.addEventListener('animationend', onUnlockAnimEnd);
     }
   }
 
